@@ -1,0 +1,33 @@
+# retirement_basic.moneta.yaml
+#
+# Simple retirement portfolio projection using built-in presets.
+# A single investment portfolio growing with S&P 500 historical parameters.
+
+scenario:
+  name: "Basic retirement projection"
+  time_horizon: 20 years
+  simulations: 10000
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: $500,000
+    growth:
+      preset: sp500
+
+global:
+  inflation:
+    preset: us_inflation
+
+queries:
+  - type: percentiles
+    values: [10, 25, 50, 75, 90]
+    of: portfolio
+    at: [5 years, 10 years, 15 years, 20 years]
+    adjust_for: inflation
+    label: "Portfolio value (real $)"
+
+  - type: probability
+    expression: portfolio > 1000000
+    at: 10 years
+    label: "Portfolio > $1M at year 10"

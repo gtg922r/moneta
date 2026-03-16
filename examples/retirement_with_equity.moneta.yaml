@@ -1,0 +1,56 @@
+# retirement_with_equity.moneta.yaml
+#
+# Full-featured retirement projection with investment portfolio and startup equity.
+# Demonstrates liquidity events, asset transfers, inflation adjustment, and
+# multiple query types.
+
+scenario:
+  name: "Retirement projection with startup equity"
+  time_horizon: 30 years
+  simulations: 10000
+
+assets:
+  investment_portfolio:
+    type: investment
+    initial_balance: $850,000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+
+  startup_equity:
+    type: illiquid_equity
+    current_valuation: $500,000
+    shares: 50000
+    liquidity_events:
+      - probability: 20% within 3 years
+        valuation_range: [2x, 5x]
+      - probability: 60% within 5-6 years
+        valuation_range: [3x, 10x]
+    on_liquidation:
+      transfer_to: investment_portfolio
+
+global:
+  inflation:
+    model: mean_reverting
+    long_term_rate: 3% annually
+    volatility: 1% annually
+
+queries:
+  - type: probability
+    expression: investment_portfolio + startup_equity > 2000000
+    at: 10 years
+    label: "$2M net worth at year 10"
+
+  - type: percentiles
+    values: [10, 25, 50, 75, 90]
+    of: investment_portfolio
+    at: [5 years, 10 years, 15 years, 20 years, 25 years, 30 years]
+    adjust_for: inflation
+    label: "Portfolio value distribution (real $)"
+
+  - type: probability
+    expression: investment_portfolio > 1500000
+    at: 15 years
+    adjust_for: inflation
+    label: "$1.5M portfolio (real $) at year 15"

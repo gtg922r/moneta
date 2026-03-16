@@ -1,0 +1,61 @@
+# scenario_comparison.moneta.yaml
+#
+# Sweep mode showcase: compare conservative, base, and aggressive return
+# assumptions for the same portfolio. Demonstrates named scenario overrides.
+
+scenario:
+  name: "Return assumption comparison"
+  time_horizon: 10 years
+  simulations: 5000
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: $200,000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+
+global:
+  inflation:
+    preset: us_inflation
+
+queries:
+  - type: probability
+    expression: portfolio > 500000
+    at: 10 years
+    label: "Portfolio > $500K at year 10"
+
+  - type: percentiles
+    values: [10, 25, 50, 75, 90]
+    of: portfolio
+    at: [5 years, 10 years]
+    label: "Portfolio value"
+
+sweep:
+  scenarios:
+    - label: conservative
+      overrides:
+        assets:
+          portfolio:
+            growth:
+              model: gbm
+              expected_return: 4% annually
+              volatility: 10% annually
+    - label: base
+      overrides:
+        assets:
+          portfolio:
+            growth:
+              model: gbm
+              expected_return: 7% annually
+              volatility: 15% annually
+    - label: aggressive
+      overrides:
+        assets:
+          portfolio:
+            growth:
+              model: gbm
+              expected_return: 10% annually
+              volatility: 20% annually
