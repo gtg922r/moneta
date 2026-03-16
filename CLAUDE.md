@@ -1,8 +1,15 @@
+## Moneta
+
+Use `/moneta` to get help building financial models. The skill guides you through creating .moneta.yaml files, running Monte Carlo simulations, and interpreting results.
+
+Run models with `uv run moneta run <file> --seed 42`. Validate with `uv run moneta validate <file>`.
+
 ## gstack
 
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
 
 Available skills:
+- `/moneta` - Financial modeling assistant (craft models, run simulations, explain results)
 - `/plan-ceo-review` - CEO-level plan review
 - `/plan-eng-review` - Engineering plan review
 - `/review` - Code review
