@@ -1,0 +1,27 @@
+scenario:
+  name: "Simple investment model"
+  time_horizon: 10 years
+  simulations: 1000
+  seed: 42
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: 100000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+
+global:
+  inflation:
+    model: mean_reverting
+    long_term_rate: 3% annually
+    volatility: 1% annually
+
+queries:
+  - type: percentiles
+    values: [10, 50, 90]
+    of: portfolio
+    at: 10 years
+    label: "Portfolio value at year 10"

@@ -1,0 +1,3 @@
+model: gbm
+expected_return: 7% annually
+volatility: 15% annually

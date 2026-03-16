@@ -1,0 +1,4 @@
+model: mean_reverting
+long_term_rate: 3% annually
+volatility: 1% annually
+mean_reversion_speed: 0.5
