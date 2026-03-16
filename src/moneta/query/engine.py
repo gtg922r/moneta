@@ -82,6 +82,12 @@ def _build_values_dict(
     values: dict[str, np.ndarray] = {}
     for name, idx in results.asset_index.items():
         values[name] = results.balances[:, step, idx]
+    # Add virtual field for cash flow shortfall
+    if (
+        hasattr(results, "cash_flow_shortfall")
+        and results.cash_flow_shortfall is not None
+    ):
+        values["shortfall"] = results.cash_flow_shortfall[:, step]
     return values
 
 

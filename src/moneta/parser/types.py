@@ -103,8 +103,8 @@ def _parse_duration(value: Any) -> int:
     else:
         months = int(amount)
 
-    if months <= 0:
-        raise ValueError(f"Duration must be positive, got {months} months")
+    if months < 0:
+        raise ValueError(f"Duration must be non-negative, got {months} months")
 
     return months
 
@@ -312,3 +312,83 @@ def _parse_currency_amount(value: Any) -> float:
 
 
 CurrencyAmount = Annotated[float, BeforeValidator(_parse_currency_amount)]
+
+
+# ---------------------------------------------------------------------------
+# CashFlowAmount
+# ---------------------------------------------------------------------------
+# Parses: "$5,000 monthly" → CashFlowAmountValue(5000.0, "monthly")
+#         "-$5,000 monthly" → CashFlowAmountValue(-5000.0, "monthly")
+#         "$100,000" → CashFlowAmountValue(100000.0, None)
+#         5000 → CashFlowAmountValue(5000.0, None)
+
+
+@dataclass(frozen=True)
+class CashFlowAmountValue:
+    """Parsed cash flow amount with optional frequency."""
+
+    amount: float  # positive = deposit, negative = withdrawal
+    frequency: str | None  # "monthly", "annually", or None (one-time)
+
+
+def _parse_cash_flow_amount(value: Any) -> CashFlowAmountValue:
+    """Parse a cash flow amount from a string, number, or CashFlowAmountValue.
+
+    "$5,000 monthly" → CashFlowAmountValue(5000.0, "monthly")
+    "-$5,000 monthly" → CashFlowAmountValue(-5000.0, "monthly")
+    "$50,000 annually" → CashFlowAmountValue(50000.0, "annually")
+    "$100,000" → CashFlowAmountValue(100000.0, None)
+    "-$100,000" → CashFlowAmountValue(-100000.0, None)
+    5000 → CashFlowAmountValue(5000.0, None)
+    """
+    if isinstance(value, CashFlowAmountValue):
+        return value
+
+    if isinstance(value, (int, float)):
+        return CashFlowAmountValue(amount=float(value), frequency=None)
+
+    if not isinstance(value, str):
+        raise ValueError(
+            f"CashFlowAmount expects a string or number, got {type(value).__name__}"
+        )
+
+    raw = value.strip()
+
+    # Detect leading sign
+    sign = 1.0
+    s = raw
+    if s.startswith("-"):
+        sign = -1.0
+        s = s[1:]
+    elif s.startswith("+"):
+        s = s[1:]
+
+    # Check for trailing frequency
+    frequency: str | None = None
+    freq_match = re.match(r"^(.+)\s+(monthly|annually)$", s, re.IGNORECASE)
+    if freq_match:
+        s = freq_match.group(1).strip()
+        frequency = freq_match.group(2).lower()
+
+    # Parse the currency portion (reuse _parse_currency_amount logic)
+    s = s.strip()
+    if s.startswith("$"):
+        s = s[1:]
+    s = s.replace(",", "").strip()
+
+    if not s:
+        raise ValueError(f"Cannot parse CashFlowAmount from '{raw}'")
+
+    try:
+        amount = float(s)
+    except ValueError:
+        raise ValueError(
+            f"Cannot parse CashFlowAmount from '{raw}'. "
+            "Expected format: '[-]$<amount> [monthly|annually]', "
+            "e.g. '$5,000 monthly' or '-$100,000'"
+        )
+
+    return CashFlowAmountValue(amount=sign * amount, frequency=frequency)
+
+
+CashFlowAmount = Annotated[CashFlowAmountValue, BeforeValidator(_parse_cash_flow_amount)]

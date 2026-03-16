@@ -10,12 +10,14 @@ import numpy as np
 import pytest
 
 from moneta.engine.orchestrator import build_pipeline, run_simulation, run_sweep
+from moneta.engine.processors.cash_flow import CashFlowProcessor
 from moneta.engine.processors.events import EventProcessor
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
 from moneta.engine.processors.transfer import TransferProcessor
 from moneta.engine.state import ResultStore, SimulationState
 from moneta.parser.models import (
+    CashFlowConfig,
     GlobalConfig,
     GrowthConfig,
     IlliquidEquityAsset,
@@ -30,7 +32,7 @@ from moneta.parser.models import (
     SweepScenario,
     TransferConfig,
 )
-from moneta.parser.types import ProbabilityWindowValue
+from moneta.parser.types import CashFlowAmountValue, ProbabilityWindowValue
 
 
 # ---------------------------------------------------------------------------
@@ -779,3 +781,166 @@ class TestRunSweep:
             assert store.n_runs == 500
             assert not np.any(np.isnan(store.balances))
             assert len(qr) == 2
+
+
+# ---------------------------------------------------------------------------
+# Cash flow pipeline integration tests
+# ---------------------------------------------------------------------------
+
+
+def _cash_flow_model(
+    n_months: int = 120, n_sims: int = 100, seed: int | None = 42
+) -> ScenarioModel:
+    """Single investment asset with a monthly withdrawal cash flow."""
+    return ScenarioModel(
+        scenario=ScenarioConfig(
+            name="Cash flow test model",
+            time_horizon=n_months,
+            simulations=n_sims,
+            seed=seed,
+        ),
+        assets={
+            "portfolio": InvestmentAsset(
+                type="investment",
+                initial_balance=100_000,
+                growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+            ),
+        },
+        global_config=GlobalConfig(
+            inflation=InflationConfig(
+                model="mean_reverting",
+                long_term_rate=0.0,
+                volatility=0.0,
+            )
+        ),
+        queries=[
+            ProbabilityQuery(
+                type="probability",
+                expression="portfolio > 50000",
+                at=n_months,
+                label="Test query",
+            )
+        ],
+        cash_flows={
+            "monthly_expenses": CashFlowConfig(
+                amount=CashFlowAmountValue(-1000.0, "monthly"),
+                asset="portfolio",
+            ),
+        },
+    )
+
+
+class TestCashFlowPipeline:
+    """Tests for cash flow integration in the pipeline."""
+
+    def test_pipeline_includes_cash_flow_processor(self):
+        """Model with cash flows should include CashFlowProcessor in pipeline."""
+        model = _cash_flow_model(n_sims=10)
+        state = SimulationState.from_scenario(model, n_runs=10)
+        pipeline = build_pipeline(model, state, n_runs=10)
+
+        processor_types = [type(p) for p in pipeline]
+        assert CashFlowProcessor in processor_types
+
+    def test_cash_flow_processor_position_before_growth(self):
+        """CashFlowProcessor should come before GrowthProcessor."""
+        model = _cash_flow_model(n_sims=10)
+        state = SimulationState.from_scenario(model, n_runs=10)
+        pipeline = build_pipeline(model, state, n_runs=10)
+
+        processor_types = [type(p) for p in pipeline]
+        cf_idx = processor_types.index(CashFlowProcessor)
+        # GrowthProcessor may not be present if growth is 0/0 but it should be
+        # since we have a GrowthConfig
+        if GrowthProcessor in processor_types:
+            growth_idx = processor_types.index(GrowthProcessor)
+            assert cf_idx < growth_idx
+
+    def test_cash_flow_processor_position_before_inflation(self):
+        """CashFlowProcessor should come before InflationProcessor."""
+        model = _cash_flow_model(n_sims=10)
+        state = SimulationState.from_scenario(model, n_runs=10)
+        pipeline = build_pipeline(model, state, n_runs=10)
+
+        processor_types = [type(p) for p in pipeline]
+        cf_idx = processor_types.index(CashFlowProcessor)
+        infl_idx = processor_types.index(InflationProcessor)
+        assert cf_idx < infl_idx
+
+    def test_no_cash_flows_no_processor(self):
+        """Model without cash flows should not include CashFlowProcessor."""
+        model = _simple_model(n_sims=10)
+        state = SimulationState.from_scenario(model, n_runs=10)
+        pipeline = build_pipeline(model, state, n_runs=10)
+
+        processor_types = [type(p) for p in pipeline]
+        assert CashFlowProcessor not in processor_types
+
+    def test_simulation_with_cash_flows_balance_decreases(self):
+        """Full simulation with $1K/month withdrawal: balance decreases over time."""
+        model = _cash_flow_model(n_months=24, n_sims=50)
+        results = run_simulation(model, seed=42)
+
+        # With 0% growth and 0% inflation, balance should decrease linearly
+        # Initial: 100K, after 24 months: 100K - 24*1K = 76K
+        final_balances = results.balances[:, -1, 0]
+        np.testing.assert_allclose(final_balances, 76_000.0, atol=1.0)
+
+    def test_simulation_cash_flow_shortfall_recorded(self):
+        """Shortfall is recorded in ResultStore when balance is exhausted."""
+        # Create model where balance runs out: 10K initial, $1K/month for 24 months
+        model = ScenarioModel(
+            scenario=ScenarioConfig(
+                name="Shortfall test",
+                time_horizon=24,
+                simulations=50,
+            ),
+            assets={
+                "portfolio": InvestmentAsset(
+                    type="investment",
+                    initial_balance=5_000,
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
+                ),
+            },
+            global_config=GlobalConfig(
+                inflation=InflationConfig(
+                    model="mean_reverting",
+                    long_term_rate=0.0,
+                    volatility=0.0,
+                )
+            ),
+            queries=[
+                ProbabilityQuery(
+                    type="probability",
+                    expression="portfolio > 0",
+                    at=24,
+                    label="Test",
+                )
+            ],
+            cash_flows={
+                "expenses": CashFlowConfig(
+                    amount=CashFlowAmountValue(-1000.0, "monthly"),
+                    asset="portfolio",
+                ),
+            },
+        )
+
+        results = run_simulation(model, seed=42)
+
+        # After 5 months, balance is 0. Remaining 19 months each have $1K shortfall.
+        # Total shortfall = 19 * 1000 = 19000
+        final_shortfall = results.cash_flow_shortfall[:, -1]
+        np.testing.assert_allclose(final_shortfall, 19_000.0, atol=1.0)
+
+        # Balance at end should be 0
+        final_balance = results.balances[:, -1, 0]
+        np.testing.assert_allclose(final_balance, 0.0, atol=1.0)
+
+    def test_result_store_shortfall_shape(self):
+        """ResultStore.cash_flow_shortfall has correct shape."""
+        model = _cash_flow_model(n_months=60, n_sims=100)
+        results = run_simulation(model, seed=42)
+
+        assert results.cash_flow_shortfall.shape == (100, 60)

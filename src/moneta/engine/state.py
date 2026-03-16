@@ -32,6 +32,7 @@ class SimulationState:
     events_fired: np.ndarray  # bool[n_runs, n_events]
     inflation_rate: np.ndarray  # float64[n_runs] — current annual rate
     cum_inflation: np.ndarray  # float64[n_runs] — cumulative factor (starts at 1.0)
+    cash_flow_shortfall: np.ndarray  # float64[n_runs] — cumulative unmet withdrawals
     step: int  # current time step index
     asset_names: list[str]  # ordered asset names (column mapping)
     asset_index: dict[str, int]  # name → column index
@@ -85,11 +86,15 @@ class SimulationState:
         # Initialize cum_inflation to 1.0 for all runs
         cum_inflation = np.ones(n_runs, dtype=np.float64)
 
+        # Initialize cash_flow_shortfall to 0.0 for all runs
+        cash_flow_shortfall = np.zeros(n_runs, dtype=np.float64)
+
         return cls(
             balances=balances,
             events_fired=events_fired,
             inflation_rate=inflation_rate,
             cum_inflation=cum_inflation,
+            cash_flow_shortfall=cash_flow_shortfall,
             step=0,
             asset_names=asset_names,
             asset_index=asset_index,
@@ -103,6 +108,7 @@ class ResultStore:
 
     balances: np.ndarray  # float64[n_runs, n_steps, n_assets]
     cum_inflation: np.ndarray  # float64[n_runs, n_steps]
+    cash_flow_shortfall: np.ndarray  # float64[n_runs, n_steps] — shortfall over time
     event_fired_at: np.ndarray  # int32[n_runs, n_events] — month fired, -1 if never
     asset_names: list[str]
     asset_index: dict[str, int]
@@ -127,11 +133,13 @@ class ResultStore:
         # Pre-allocate arrays
         balances = np.empty((n_runs, n_steps, n_assets), dtype=np.float64)
         cum_inflation = np.empty((n_runs, n_steps), dtype=np.float64)
+        cash_flow_shortfall = np.zeros((n_runs, n_steps), dtype=np.float64)
         event_fired_at = np.full((n_runs, n_events), -1, dtype=np.int32)
 
         return cls(
             balances=balances,
             cum_inflation=cum_inflation,
+            cash_flow_shortfall=cash_flow_shortfall,
             event_fired_at=event_fired_at,
             asset_names=asset_names,
             asset_index=asset_index,
@@ -144,6 +152,7 @@ class ResultStore:
         """Copy current state slice into result arrays at the given time step."""
         self.balances[:, step, :] = state.balances
         self.cum_inflation[:, step] = state.cum_inflation
+        self.cash_flow_shortfall[:, step] = state.cash_flow_shortfall
 
         # Update event_fired_at: for any newly fired events, record the step.
         # Only update entries that are still -1 (unfired) where events_fired

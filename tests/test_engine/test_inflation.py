@@ -29,6 +29,7 @@ def _make_state(
         events_fired=np.zeros((n_runs, 0), dtype=bool),
         inflation_rate=np.full(n_runs, initial_rate, dtype=np.float64),
         cum_inflation=np.ones(n_runs, dtype=np.float64),
+        cash_flow_shortfall=np.zeros(n_runs, dtype=np.float64),
         step=0,
         asset_names=["dummy"],
         asset_index={"dummy": 0},

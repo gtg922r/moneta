@@ -40,6 +40,7 @@ def _make_result_store(
     return ResultStore(
         balances=balances,
         cum_inflation=cum_inflation,
+        cash_flow_shortfall=np.zeros((n_runs, n_steps), dtype=np.float64),
         event_fired_at=np.full((n_runs, 0), -1, dtype=np.int32),
         asset_names=asset_names,
         asset_index=asset_index,

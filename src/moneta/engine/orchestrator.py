@@ -7,8 +7,9 @@ records the state into the ResultStore.
 Pipeline order (invariant):
 1. EventProcessor (if any events exist)
 2. TransferProcessor (if any transfers exist)
-3. GrowthProcessor (if any growth configs exist)
-4. InflationProcessor (always)
+3. CashFlowProcessor (if any cash flows defined)
+4. GrowthProcessor (if any growth configs exist)
+5. InflationProcessor (always)
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from __future__ import annotations
 import numpy as np
 
 from moneta.engine.processors import Processor
+from moneta.engine.processors.cash_flow import CashFlowProcessor
 from moneta.engine.processors.events import EventProcessor
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
@@ -41,8 +43,9 @@ def build_pipeline(
     Pipeline order (invariant):
     1. EventProcessor (if any events exist)
     2. TransferProcessor (if any transfers exist)
-    3. GrowthProcessor (if any growth configs exist)
-    4. InflationProcessor (always)
+    3. CashFlowProcessor (if any cash flows defined)
+    4. GrowthProcessor (if any growth configs exist)
+    5. InflationProcessor (always)
 
     Args:
         model: The parsed scenario model.
@@ -82,7 +85,13 @@ def build_pipeline(
     if has_transfers:
         pipeline.append(TransferProcessor.from_scenario(model, n_runs))
 
-    # 3. GrowthProcessor (if any growth configs)
+    # 3. CashFlowProcessor (if any cash flows defined)
+    if model.cash_flows:
+        pipeline.append(
+            CashFlowProcessor.from_scenario(model, state.asset_index)
+        )
+
+    # 4. GrowthProcessor (if any growth configs)
     growth_configs: dict[str, GrowthConfig] = {}
     for name, asset in model.assets.items():
         if isinstance(asset, InvestmentAsset):
@@ -102,7 +111,7 @@ def build_pipeline(
             )
         )
 
-    # 4. InflationProcessor (always present)
+    # 5. InflationProcessor (always present)
     inflation_config = model.global_config.inflation
     if isinstance(inflation_config, InflationConfig):
         pipeline.append(InflationProcessor(inflation_config))

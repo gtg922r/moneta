@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from moneta.parser.types import (
     AnnualRate,
+    CashFlowAmount,
     CurrencyAmount,
     Duration,
     MultiplierRange,
@@ -195,6 +196,61 @@ class SweepConfig(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Cash flow configuration
+# ---------------------------------------------------------------------------
+
+
+class CashFlowConfig(BaseModel):
+    """A scheduled cash flow (income, withdrawal, or one-time expense).
+
+    Positive amounts are deposits, negative are withdrawals.
+    One-time flows use 'at', recurring flows use 'start'/'end'.
+    """
+
+    amount: CashFlowAmount
+    asset: str  # which asset this flows in/out of
+
+    # For recurring flows
+    start: Duration | None = None
+    end: Duration | None = None
+
+    # For one-time flows
+    at: Duration | None = None
+
+    # Optional inflation adjustment
+    adjust_for: Literal["inflation"] | None = None
+
+    # Balance behavior: clamp to zero or allow negative
+    allow_negative: bool = False
+
+    @model_validator(mode="after")
+    def _validate_timing(self) -> CashFlowConfig:
+        """Validate that either at (one-time) or start/end (recurring) is specified."""
+        has_at = self.at is not None
+        has_schedule = self.start is not None or self.end is not None
+        amount_val = self.amount  # CashFlowAmountValue
+
+        if has_at and has_schedule:
+            raise ValueError(
+                "Cash flow cannot have both 'at' and 'start'/'end' "
+                "— use 'at' for one-time, 'start'/'end' for recurring"
+            )
+
+        # One-time: must have 'at' OR amount has no frequency
+        if amount_val.frequency is None and not has_at and not has_schedule:
+            raise ValueError("One-time cash flow (no frequency) must specify 'at'")
+
+        # Recurring: must have frequency in amount
+        if amount_val.frequency is not None and has_at:
+            raise ValueError(
+                f"Recurring cash flow ('{amount_val.frequency}') "
+                "should use 'start'/'end', not 'at'"
+            )
+
+        return self
+
+
+# ---------------------------------------------------------------------------
 # Top-level model
 # ---------------------------------------------------------------------------
 
@@ -212,6 +268,7 @@ class ScenarioModel(BaseModel):
     assets: dict[str, Asset]
     global_config: GlobalConfig = Field(alias="global")
     queries: list[Query]
+    cash_flows: dict[str, CashFlowConfig] | None = None
     sweep: SweepConfig | None = None
 
     @model_validator(mode="after")
@@ -255,7 +312,52 @@ class ScenarioModel(BaseModel):
                         f"({horizon_months // 12} years)"
                     )
 
-            # Validate asset references in 'of' field (for non-probability queries)
+        # Validate cash flow references
+        if self.cash_flows:
+            for cf_name, cf in self.cash_flows.items():
+                # Asset must exist
+                if cf.asset not in asset_names:
+                    raise ValueError(
+                        f"Cash flow '{cf_name}' references asset '{cf.asset}' "
+                        f"but no asset with that name exists. "
+                        f"Available: {', '.join(sorted(asset_names))}"
+                    )
+
+                # Validate 'at' within horizon
+                if cf.at is not None and cf.at > horizon_months:
+                    raise ValueError(
+                        f"Cash flow '{cf_name}' has 'at' = {cf.at} months "
+                        f"but time_horizon is {horizon_months} months "
+                        f"({horizon_months // 12} years)"
+                    )
+
+                # Validate 'start'/'end' within horizon
+                if cf.start is not None and cf.start > horizon_months:
+                    raise ValueError(
+                        f"Cash flow '{cf_name}' has 'start' = {cf.start} months "
+                        f"but time_horizon is {horizon_months} months "
+                        f"({horizon_months // 12} years)"
+                    )
+                if cf.end is not None and cf.end > horizon_months:
+                    raise ValueError(
+                        f"Cash flow '{cf_name}' has 'end' = {cf.end} months "
+                        f"but time_horizon is {horizon_months} months "
+                        f"({horizon_months // 12} years)"
+                    )
+
+                # Validate start < end when both specified
+                if (
+                    cf.start is not None
+                    and cf.end is not None
+                    and cf.start >= cf.end
+                ):
+                    raise ValueError(
+                        f"Cash flow '{cf_name}' has 'start' ({cf.start}) "
+                        f">= 'end' ({cf.end}) — start must be before end"
+                    )
+
+        # Validate asset references in 'of' field (for non-probability queries)
+        for i, query in enumerate(self.queries):
             if isinstance(query, (PercentilesQuery, ExpectedQuery, DistributionQuery)):
                 # The 'of' field can be a simple asset name or an expression.
                 # For now, check simple asset names. Complex expressions

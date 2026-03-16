@@ -1,0 +1,52 @@
+scenario:
+  name: "Cash flow test"
+  time_horizon: 30 years
+  simulations: 1000
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: $500,000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+
+global:
+  inflation:
+    model: mean_reverting
+    long_term_rate: 3% annually
+    volatility: 1% annually
+
+cash_flows:
+  retirement_spending:
+    amount: -$5,000 monthly
+    asset: portfolio
+    start: 0 months
+    end: 30 years
+    adjust_for: inflation
+
+  college_tuition:
+    amount: -$50,000 annually
+    asset: portfolio
+    start: 18 years
+    end: 22 years
+
+  salary_contribution:
+    amount: $3,000 monthly
+    asset: portfolio
+    start: 0 months
+    end: 20 years
+
+queries:
+  - type: probability
+    expression: portfolio > 0
+    at: 30 years
+    label: "Still solvent at year 30"
+
+  - type: percentiles
+    values: [10, 25, 50, 75, 90]
+    of: portfolio
+    at: [10 years, 20 years, 30 years]
+    adjust_for: inflation
+    label: "Portfolio value (real $)"
