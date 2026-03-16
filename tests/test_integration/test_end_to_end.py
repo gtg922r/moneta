@@ -1,0 +1,298 @@
+"""End-to-end integration tests for the Moneta CLI.
+
+Uses Click's CliRunner to invoke commands without a subprocess,
+giving us clean control over exit codes, stdout, and temporary files.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from unittest.mock import patch
+
+from click.testing import CliRunner
+
+from moneta.cli import main
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
+SIMPLE_MODEL = str(FIXTURES_DIR / "simple_model.moneta.yaml")
+EQUITY_MODEL = str(FIXTURES_DIR / "equity_model.moneta.yaml")
+
+runner = CliRunner()
+
+
+def _invoke_run(args: list[str], **kwargs):
+    """Helper to invoke ``moneta run`` with webbrowser.open patched out."""
+    with patch("moneta.output.report.webbrowser.open"):
+        return runner.invoke(main, args, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — simple model
+# ---------------------------------------------------------------------------
+
+
+class TestRunSimpleModel:
+    """Tests for ``moneta run simple_model.moneta.yaml``."""
+
+    def test_run_simple_model_exit_0(self):
+        result = _invoke_run(["run", SIMPLE_MODEL, "--seed", "42", "--no-report"])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_run_simple_model_output_contains_moneta(self):
+        result = _invoke_run(["run", SIMPLE_MODEL, "--seed", "42", "--no-report"])
+        assert "Moneta" in result.output
+
+    def test_run_simple_model_output_contains_simulations(self):
+        result = _invoke_run(["run", SIMPLE_MODEL, "--seed", "42", "--no-report"])
+        assert "simulations" in result.output.lower() or "1,000" in result.output
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — equity model
+# ---------------------------------------------------------------------------
+
+
+class TestRunEquityModel:
+    """Tests for ``moneta run equity_model.moneta.yaml``."""
+
+    def test_run_equity_model_exit_0(self):
+        result = _invoke_run(["run", EQUITY_MODEL, "--seed", "42", "--no-report"])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_run_equity_model_contains_probability(self):
+        result = _invoke_run(["run", EQUITY_MODEL, "--seed", "42", "--no-report"])
+        assert "probability" in result.output.lower() or "%" in result.output
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — --no-report
+# ---------------------------------------------------------------------------
+
+
+class TestNoReport:
+    """The --no-report flag should suppress HTML generation."""
+
+    def test_no_report_no_html(self, tmp_path):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--output", str(tmp_path),
+        ])
+        assert result.exit_code == 0
+        # No HTML files should have been created
+        html_files = list(tmp_path.glob("*.html"))
+        assert len(html_files) == 0
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — --format json
+# ---------------------------------------------------------------------------
+
+
+class TestJsonFormat:
+    """Tests for ``moneta run --format json``."""
+
+    def test_json_exit_0(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_json_valid_output(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        # The JSON output should be the entire stdout
+        parsed = json.loads(result.output)
+        assert "scenario" in parsed
+        assert "queries" in parsed
+        assert "elapsed_ms" in parsed
+
+    def test_json_scenario_fields(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        parsed = json.loads(result.output)
+        assert parsed["scenario"]["name"] == "Simple investment model"
+        assert parsed["scenario"]["simulations"] == 1000
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — --simulations override
+# ---------------------------------------------------------------------------
+
+
+class TestSimulationsOverride:
+    """Tests for ``moneta run --simulations N``."""
+
+    def test_override_simulations_exit_0(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--simulations", "100",
+            "--seed", "42",
+            "--no-report",
+        ])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_override_simulations_output(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--simulations", "100",
+            "--seed", "42",
+            "--no-report",
+        ])
+        assert "100" in result.output
+
+    def test_override_simulations_json(self):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--simulations", "100",
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        parsed = json.loads(result.output)
+        assert parsed["scenario"]["simulations"] == 100
+
+
+# ---------------------------------------------------------------------------
+# ``moneta validate``
+# ---------------------------------------------------------------------------
+
+
+class TestValidate:
+    """Tests for ``moneta validate``."""
+
+    def test_validate_simple_model_exit_0(self):
+        result = runner.invoke(main, ["validate", SIMPLE_MODEL])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_validate_simple_model_output(self):
+        result = runner.invoke(main, ["validate", SIMPLE_MODEL])
+        assert "valid" in result.output.lower()
+
+    def test_validate_equity_model_exit_0(self):
+        result = runner.invoke(main, ["validate", EQUITY_MODEL])
+        assert result.exit_code == 0
+
+    def test_validate_nonexistent_file(self):
+        result = runner.invoke(main, ["validate", "nonexistent.yaml"])
+        assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# Seeded reproducibility
+# ---------------------------------------------------------------------------
+
+
+class TestReproducibility:
+    """Running with the same seed should produce identical output."""
+
+    def test_seeded_runs_are_identical(self):
+        result1 = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+        ])
+        result2 = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+        ])
+        assert result1.exit_code == 0
+        assert result2.exit_code == 0
+        # Compare output excluding the header line which contains timing
+        lines1 = [l for l in result1.output.splitlines() if not l.startswith("───")]
+        lines2 = [l for l in result2.output.splitlines() if not l.startswith("───")]
+        assert lines1 == lines2
+
+    def test_seeded_json_identical(self):
+        result1 = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        result2 = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--no-report",
+            "--format", "json",
+        ])
+        # Parse JSON and compare values (elapsed_ms may differ slightly)
+        parsed1 = json.loads(result1.output)
+        parsed2 = json.loads(result2.output)
+        assert parsed1["queries"] == parsed2["queries"]
+        assert parsed1["scenario"] == parsed2["scenario"]
+
+
+# ---------------------------------------------------------------------------
+# Error handling
+# ---------------------------------------------------------------------------
+
+
+class TestErrorHandling:
+    """Tests for CLI error handling."""
+
+    def test_invalid_model_file(self, tmp_path):
+        bad_model = tmp_path / "bad_model.moneta.yaml"
+        bad_model.write_text("this is not valid yaml: [")
+        result = _invoke_run(["run", str(bad_model), "--no-report"])
+        assert result.exit_code != 0
+
+    def test_invalid_model_content(self, tmp_path):
+        bad_model = tmp_path / "bad_model.moneta.yaml"
+        bad_model.write_text("scenario:\n  name: test\n")
+        result = _invoke_run(["run", str(bad_model), "--no-report"])
+        assert result.exit_code != 0
+        assert "error" in result.output.lower()
+
+    def test_nonexistent_run_file(self):
+        result = _invoke_run(["run", "nonexistent_file.yaml"])
+        assert result.exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# HTML report generation
+# ---------------------------------------------------------------------------
+
+
+class TestReportGeneration:
+    """Tests for HTML report output."""
+
+    def test_report_generated(self, tmp_path):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--output", str(tmp_path),
+        ])
+        assert result.exit_code == 0
+        html_files = list(tmp_path.glob("*.html"))
+        assert len(html_files) == 1
+        assert "simple_model" in html_files[0].name
+
+    def test_report_is_html(self, tmp_path):
+        result = _invoke_run([
+            "run", SIMPLE_MODEL,
+            "--seed", "42",
+            "--output", str(tmp_path),
+        ])
+        assert result.exit_code == 0
+        html_files = list(tmp_path.glob("*.html"))
+        content = html_files[0].read_text()
+        assert "<html>" in content.lower() or "<!doctype html>" in content.lower()
