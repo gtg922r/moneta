@@ -1,0 +1,59 @@
+# retirement_with_spending.moneta.yaml
+#
+# Retirement projection with salary contributions, retirement spending,
+# and college tuition. Demonstrates recurring and one-time cash flows,
+# inflation adjustment, and shortfall tracking.
+#
+# Story: $500K investment portfolio grows with S&P 500 returns. A $3K/month
+# salary contribution runs for 20 years. At year 20, retirement begins with
+# $6K/month inflation-adjusted spending. College tuition of $50K/year hits
+# from years 18-22. The question: does the money last through year 40?
+
+scenario:
+  name: "Retirement with spending and college costs"
+  time_horizon: 40 years
+  simulations: 10000
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: $500,000
+    growth:
+      preset: sp500
+
+global:
+  inflation:
+    preset: us_inflation
+
+cash_flows:
+  salary_contribution:
+    amount: $3,000 monthly
+    asset: portfolio
+    start: 0 months
+    end: 20 years
+
+  retirement_spending:
+    amount: -$6,000 monthly
+    asset: portfolio
+    start: 20 years
+    end: 40 years
+    adjust_for: inflation
+
+  college_tuition:
+    amount: -$50,000 annually
+    asset: portfolio
+    start: 18 years
+    end: 22 years
+
+queries:
+  - type: probability
+    expression: portfolio > 0
+    at: 40 years
+    label: "Still solvent at year 40"
+
+  - type: percentiles
+    values: [10, 25, 50, 75, 90]
+    of: portfolio
+    at: [10 years, 20 years, 30 years, 40 years]
+    adjust_for: inflation
+    label: "Portfolio value over time (real $)"

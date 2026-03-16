@@ -128,15 +128,17 @@ When modifying an existing model, use the Edit tool to make targeted changes rat
 - Illiquid equity with probabilistic liquidity events
 - Inflation modeling (mean-reverting)
 - Asset transfers on events (e.g., equity → portfolio on exit)
+- Recurring cash flows (monthly/annual income, withdrawals, expenses)
+- One-time expenses (college tuition, house purchase)
+- Inflation-adjusted cash flows
+- Balance shortfall tracking (probability of running out of money)
 - Probability queries ("what's the chance of X?")
 - Percentile projections ("what's the range of outcomes?")
 - Scenario comparison (sweep mode)
 - Inflation-adjusted values (real dollars)
 
 **Cannot do yet (future phases):**
-- Income or expense modeling
 - Tax calculations (income tax, capital gains)
-- Recurring contributions (401k, IRA)
 - Correlated assets
 - Goal-seeking ("what savings rate do I need?")
 - Real portfolio data import
