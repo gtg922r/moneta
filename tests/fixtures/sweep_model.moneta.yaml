@@ -1,0 +1,51 @@
+scenario:
+  name: "Sweep test"
+  time_horizon: 5 years
+  simulations: 500
+  seed: 42
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: 100000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+
+global:
+  inflation:
+    model: mean_reverting
+    long_term_rate: 3% annually
+    volatility: 1% annually
+
+queries:
+  - type: probability
+    expression: portfolio > 150000
+    at: 5 years
+    label: "$150K at year 5"
+
+  - type: percentiles
+    values: [25, 50, 75]
+    of: portfolio
+    at: 5 years
+    label: "Portfolio at year 5"
+
+sweep:
+  scenarios:
+    - label: conservative
+      overrides:
+        assets:
+          portfolio:
+            growth:
+              model: gbm
+              expected_return: 4% annually
+              volatility: 10% annually
+    - label: aggressive
+      overrides:
+        assets:
+          portfolio:
+            growth:
+              model: gbm
+              expected_return: 10% annually
+              volatility: 20% annually

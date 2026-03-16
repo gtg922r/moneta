@@ -21,6 +21,7 @@ from moneta.cli import main
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 SIMPLE_MODEL = str(FIXTURES_DIR / "simple_model.moneta.yaml")
 EQUITY_MODEL = str(FIXTURES_DIR / "equity_model.moneta.yaml")
+SWEEP_MODEL = str(FIXTURES_DIR / "sweep_model.moneta.yaml")
 
 runner = CliRunner()
 
@@ -296,3 +297,70 @@ class TestReportGeneration:
         html_files = list(tmp_path.glob("*.html"))
         content = html_files[0].read_text()
         assert "<html>" in content.lower() or "<!doctype html>" in content.lower()
+
+
+# ---------------------------------------------------------------------------
+# ``moneta run`` — sweep mode
+# ---------------------------------------------------------------------------
+
+
+class TestSweepMode:
+    """Tests for sweep mode with named scenarios."""
+
+    def test_sweep_exit_0(self):
+        """Sweep model should run successfully."""
+        result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
+        assert result.exit_code == 0, f"output: {result.output}"
+
+    def test_sweep_output_contains_scenario_comparison(self):
+        """Output should include scenario comparison section."""
+        result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
+        assert "Scenario Comparison" in result.output
+
+    def test_sweep_output_contains_scenario_labels(self):
+        """Output should include all scenario labels."""
+        result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
+        assert "conservative" in result.output
+        assert "aggressive" in result.output
+        assert "base" in result.output
+
+    def test_sweep_output_contains_base_query_results(self):
+        """Sweep output should still include the base query results."""
+        result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
+        assert "$150K at year 5" in result.output or "probability" in result.output.lower()
+
+    def test_sweep_report_generation(self, tmp_path):
+        """Sweep mode should generate an HTML report."""
+        result = _invoke_run([
+            "run", SWEEP_MODEL,
+            "--seed", "42",
+            "--output", str(tmp_path),
+        ])
+        assert result.exit_code == 0
+        html_files = list(tmp_path.glob("*.html"))
+        assert len(html_files) == 1
+
+    def test_sweep_report_contains_comparison(self, tmp_path):
+        """Sweep HTML report should contain comparison content."""
+        result = _invoke_run([
+            "run", SWEEP_MODEL,
+            "--seed", "42",
+            "--output", str(tmp_path),
+        ])
+        assert result.exit_code == 0
+        html_files = list(tmp_path.glob("*.html"))
+        content = html_files[0].read_text()
+        assert "Scenario Comparison" in content
+
+    def test_sweep_produces_different_results(self):
+        """Conservative and aggressive scenarios should produce different probabilities."""
+        result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
+        assert result.exit_code == 0
+        # The comparison table should show different percentages for different scenarios
+        # We verify that the output contains multiple percentage values
+        lines = result.output.split("\n")
+        comparison_lines = [l for l in lines if "%" in l and ("conservative" in l or "aggressive" in l or "base" in l)]
+        assert len(comparison_lines) >= 2, (
+            f"Expected at least 2 comparison lines with percentages, "
+            f"got {len(comparison_lines)}"
+        )

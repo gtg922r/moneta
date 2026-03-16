@@ -21,6 +21,7 @@ from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
 from moneta.engine.processors.transfer import TransferProcessor
 from moneta.engine.state import ResultStore, SimulationState
+from moneta.parser.loader import deep_merge
 from moneta.parser.models import (
     GrowthConfig,
     IlliquidEquityAsset,
@@ -29,6 +30,7 @@ from moneta.parser.models import (
     PresetRef,
     ScenarioModel,
 )
+from moneta.query.engine import QueryResult, evaluate_queries
 
 
 def build_pipeline(
@@ -147,3 +149,56 @@ def run_simulation(
         results.record(state, t)
 
     return results
+
+
+def run_sweep(
+    model: ScenarioModel,
+    seed: int | None = None,
+) -> list[tuple[str, ResultStore, list[QueryResult]]]:
+    """Run simulation for each sweep scenario.
+
+    For each scenario defined in model.sweep.scenarios, deep-merges
+    the scenario's overrides onto the base model dict, re-parses
+    through Pydantic validation, and runs the simulation.
+
+    Args:
+        model: The parsed and validated base scenario model.
+        seed: Optional random seed. Each scenario gets seed + i
+            for independent but reproducible results.
+
+    Returns:
+        List of (label, ResultStore, list[QueryResult]) tuples,
+        one per sweep scenario.
+    """
+    if not model.sweep or not model.sweep.scenarios:
+        return []
+
+    results_list: list[tuple[str, ResultStore, list[QueryResult]]] = []
+
+    # Get the base model as a raw dict using aliases so that
+    # 'global' is preserved (not 'global_config')
+    base_dict = model.model_dump(by_alias=True)
+
+    for i, scenario in enumerate(model.sweep.scenarios):
+        # Deep-merge overrides onto base dict
+        merged = deep_merge(base_dict, scenario.overrides)
+
+        # Remove the 'sweep' key from the merged dict so we
+        # don't recurse into sweep during re-parse
+        merged.pop("sweep", None)
+
+        # Re-parse through Pydantic validation to get a validated model
+        override_model = ScenarioModel.model_validate(merged)
+
+        # Compute the seed for this scenario
+        scenario_seed = (seed + i) if seed is not None else None
+
+        # Run simulation
+        store = run_simulation(override_model, seed=scenario_seed)
+
+        # Evaluate queries
+        query_results = evaluate_queries(override_model.queries, store)
+
+        results_list.append((scenario.label, store, query_results))
+
+    return results_list

@@ -12,7 +12,7 @@ from pathlib import Path
 import click
 
 from moneta import MonetaError
-from moneta.engine.orchestrator import run_simulation
+from moneta.engine.orchestrator import run_simulation, run_sweep
 from moneta.output.report import generate_report
 from moneta.output.terminal import render_results
 from moneta.parser.loader import load_model
@@ -115,10 +115,22 @@ def run(
         # 4. Evaluate queries
         query_results = evaluate_queries(model.queries, results)
 
+        # 4b. Run sweep if configured
+        sweep_results = None
+        sweep_comparison = None
+        if model.sweep and model.sweep.scenarios:
+            sweep_results = run_sweep(model, seed=model.scenario.seed)
+            # Build comparison data for terminal: list of (label, query_results)
+            # Include the base scenario as "base"
+            sweep_comparison = [("base", query_results)]
+            for label, _store, qr in sweep_results:
+                sweep_comparison.append((label, qr))
+
         # 5. Output based on format
         if output_format == "table":
             output_text = render_results(
-                query_results, model.scenario, elapsed_ms
+                query_results, model.scenario, elapsed_ms,
+                sweep_results=sweep_comparison,
             )
             click.echo(output_text)
         elif output_format == "json":
@@ -137,7 +149,8 @@ def run(
             report_name = Path(model_file).stem + "_report.html"
             report_path = output_dir / report_name
             generate_report(
-                results, query_results, model.scenario, report_path
+                results, query_results, model.scenario, report_path,
+                sweep_results=sweep_results,
             )
             click.echo(f"\n{_REPORT_ICON} Full report: {report_path}")
 

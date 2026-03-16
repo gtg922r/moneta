@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from moneta.engine.orchestrator import build_pipeline, run_simulation
+from moneta.engine.orchestrator import build_pipeline, run_simulation, run_sweep
 from moneta.engine.processors.events import EventProcessor
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
@@ -22,9 +22,12 @@ from moneta.parser.models import (
     InflationConfig,
     InvestmentAsset,
     LiquidityEvent,
+    PercentilesQuery,
     ProbabilityQuery,
     ScenarioConfig,
     ScenarioModel,
+    SweepConfig,
+    SweepScenario,
     TransferConfig,
 )
 from moneta.parser.types import ProbabilityWindowValue
@@ -589,3 +592,190 @@ class TestFixtureFileIntegration:
         # Some events should have fired
         any_event_fired = (results.event_fired_at != -1).any()
         assert any_event_fired, "Expected some events to fire in the equity model"
+
+
+# ---------------------------------------------------------------------------
+# Sweep mode tests
+# ---------------------------------------------------------------------------
+
+
+def _sweep_model(n_sims: int = 500, seed: int = 42) -> ScenarioModel:
+    """Model with sweep scenarios: conservative and aggressive."""
+    return ScenarioModel(
+        scenario=ScenarioConfig(
+            name="Sweep test",
+            time_horizon=60,  # 5 years
+            simulations=n_sims,
+            seed=seed,
+        ),
+        assets={
+            "portfolio": InvestmentAsset(
+                type="investment",
+                initial_balance=100_000,
+                growth=GrowthConfig(model="gbm", expected_return=0.07, volatility=0.15),
+            ),
+        },
+        global_config=GlobalConfig(
+            inflation=InflationConfig(
+                model="mean_reverting", long_term_rate=0.03, volatility=0.01
+            )
+        ),
+        queries=[
+            ProbabilityQuery(
+                type="probability",
+                expression="portfolio > 150000",
+                at=60,
+                label="$150K at year 5",
+            ),
+            PercentilesQuery(
+                type="percentiles",
+                values=[25, 50, 75],
+                of="portfolio",
+                at=60,
+                label="Portfolio at year 5",
+            ),
+        ],
+        sweep=SweepConfig(
+            scenarios=[
+                SweepScenario(
+                    label="conservative",
+                    overrides={
+                        "assets": {
+                            "portfolio": {
+                                "growth": {
+                                    "model": "gbm",
+                                    "expected_return": 0.04,
+                                    "volatility": 0.10,
+                                }
+                            }
+                        }
+                    },
+                ),
+                SweepScenario(
+                    label="aggressive",
+                    overrides={
+                        "assets": {
+                            "portfolio": {
+                                "growth": {
+                                    "model": "gbm",
+                                    "expected_return": 0.10,
+                                    "volatility": 0.20,
+                                }
+                            }
+                        }
+                    },
+                ),
+            ]
+        ),
+    )
+
+
+class TestRunSweep:
+    """Tests for run_sweep — named scenario sweep mode."""
+
+    def test_run_sweep_returns_correct_number_of_scenarios(self):
+        """run_sweep should return one tuple per sweep scenario."""
+        model = _sweep_model(n_sims=100)
+        results = run_sweep(model, seed=42)
+
+        assert len(results) == 2
+
+    def test_run_sweep_labels_match_scenario_definitions(self):
+        """Each result tuple should carry the correct scenario label."""
+        model = _sweep_model(n_sims=100)
+        results = run_sweep(model, seed=42)
+
+        labels = [label for label, _store, _qr in results]
+        assert labels == ["conservative", "aggressive"]
+
+    def test_run_sweep_each_scenario_has_results(self):
+        """Each scenario should produce a valid ResultStore and QueryResults."""
+        model = _sweep_model(n_sims=100)
+        results = run_sweep(model, seed=42)
+
+        for label, store, query_results in results:
+            assert store.n_runs == 100
+            assert store.n_steps == 60
+            assert store.n_assets == 1
+            assert not np.any(np.isnan(store.balances))
+            assert len(query_results) == 2
+
+    def test_run_sweep_produces_different_results_per_scenario(self):
+        """Different scenarios should produce different simulation results."""
+        model = _sweep_model(n_sims=500)
+        results = run_sweep(model, seed=42)
+
+        _, store_conservative, _ = results[0]
+        _, store_aggressive, _ = results[1]
+
+        # The final balances should differ due to different growth params
+        assert not np.array_equal(
+            store_conservative.balances, store_aggressive.balances
+        )
+
+    def test_run_sweep_conservative_lower_than_aggressive(self):
+        """Conservative scenario should produce lower median than aggressive."""
+        model = _sweep_model(n_sims=1000)
+        results = run_sweep(model, seed=42)
+
+        _, store_conservative, _ = results[0]
+        _, store_aggressive, _ = results[1]
+
+        conservative_median = np.median(store_conservative.balances[:, -1, 0])
+        aggressive_median = np.median(store_aggressive.balances[:, -1, 0])
+
+        assert conservative_median < aggressive_median, (
+            f"Conservative median {conservative_median:.0f} should be "
+            f"less than aggressive median {aggressive_median:.0f}"
+        )
+
+    def test_run_sweep_query_results_differ(self):
+        """Probability query results should differ across scenarios."""
+        model = _sweep_model(n_sims=1000)
+        results = run_sweep(model, seed=42)
+
+        _, _, qr_conservative = results[0]
+        _, _, qr_aggressive = results[1]
+
+        # Probability of portfolio > 150K should be lower for conservative
+        prob_conservative = qr_conservative[0].probability
+        prob_aggressive = qr_aggressive[0].probability
+
+        assert prob_conservative < prob_aggressive, (
+            f"Conservative probability {prob_conservative:.1f}% should be "
+            f"less than aggressive {prob_aggressive:.1f}%"
+        )
+
+    def test_run_sweep_no_scenarios_returns_empty(self):
+        """Model with no sweep scenarios should return empty list."""
+        model = _simple_model(n_sims=100)
+        results = run_sweep(model, seed=42)
+
+        assert results == []
+
+    def test_run_sweep_seeded_reproducibility(self):
+        """Sweep results should be reproducible with the same seed."""
+        model = _sweep_model(n_sims=100)
+
+        results1 = run_sweep(model, seed=42)
+        results2 = run_sweep(model, seed=42)
+
+        for (l1, s1, _), (l2, s2, _) in zip(results1, results2):
+            assert l1 == l2
+            np.testing.assert_array_equal(s1.balances, s2.balances)
+
+    def test_run_sweep_from_fixture_file(self):
+        """Load sweep_model.moneta.yaml and run sweep."""
+        from moneta.parser.loader import load_model
+
+        model = load_model("tests/fixtures/sweep_model.moneta.yaml")
+        results = run_sweep(model, seed=42)
+
+        assert len(results) == 2
+        labels = [label for label, _, _ in results]
+        assert labels == ["conservative", "aggressive"]
+
+        for _, store, qr in results:
+            assert store.n_runs == 500
+            assert not np.any(np.isnan(store.balances))
+            assert len(qr) == 2
