@@ -32,19 +32,53 @@ Moneta runs **thousands of Monte Carlo simulations** to give you distributions: 
 
 ## Install
 
-Requires Python 3.12+. Install with [uv](https://docs.astral.sh/uv/):
+Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv tool install moneta
+# Install from GitHub
+uv tool install git+https://github.com/gtg922r/moneta.git
+
+# Or run directly without installing
+uvx --from git+https://github.com/gtg922r/moneta.git moneta run model.moneta.yaml
 ```
 
-Or run directly without installing:
+### Use with Claude Code (recommended)
+
+The best way to use Moneta is with the **`/moneta` agent skill** for [Claude Code](https://claude.com/claude-code). Instead of writing YAML by hand, describe your financial situation conversationally and the agent builds the model, runs the simulation, and explains the results.
+
+**Setup:**
 
 ```bash
-uvx moneta run model.moneta.yaml
+# 1. Clone the repo
+git clone https://github.com/gtg922r/moneta.git
+cd moneta
+
+# 2. Install dependencies
+uv sync
+
+# 3. Start Claude Code in the moneta directory
+claude
 ```
 
-For development:
+Claude Code automatically discovers the `/moneta` skill from `.claude/skills/moneta/SKILL.md`. Type `/moneta` and describe what you want to model:
+
+```
+> /moneta
+
+  I have a $500K investment portfolio and $300K in startup equity.
+  I'm contributing $3K/month to the portfolio. The startup might
+  exit in 3-5 years at 2-8x. I want to know if I can retire in
+  20 years with $6K/month spending.
+```
+
+The agent will:
+1. Build a `.moneta.yaml` model from your description
+2. Choose appropriate presets (S&P 500 growth, US inflation)
+3. Run the simulation and generate an interactive report
+4. Explain the results in plain English
+5. Offer to adjust parameters or add scenarios
+
+### For development
 
 ```bash
 git clone https://github.com/gtg922r/moneta.git
