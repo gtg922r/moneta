@@ -306,8 +306,8 @@ Each scenario deep-merges its overrides onto the base model. Run produces a comp
 ## CLI
 
 ```bash
-uv run moneta run <file.moneta.yaml> [options]
-uv run moneta validate <file.moneta.yaml>
+moneta run <file.moneta.yaml> [options]
+moneta validate <file.moneta.yaml>
 
 Options:
   --simulations N     Override simulation count

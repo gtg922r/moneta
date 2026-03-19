@@ -46,21 +46,19 @@ uvx --from git+https://github.com/gtg922r/moneta.git moneta run model.moneta.yam
 
 The best way to use Moneta is with the **`/moneta` agent skill** for [Claude Code](https://claude.com/claude-code). Instead of writing YAML by hand, describe your financial situation conversationally and the agent builds the model, runs the simulation, and explains the results.
 
-**Setup:**
+**Install the skill (one command):**
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/gtg922r/moneta.git
-cd moneta
-
-# 2. Install dependencies
-uv sync
-
-# 3. Start Claude Code in the moneta directory
-claude
+npx skills add gtg922r/moneta
 ```
 
-Claude Code automatically discovers the `/moneta` skill from `.claude/skills/moneta/SKILL.md`. Type `/moneta` and describe what you want to model:
+The skill auto-installs the moneta CLI on first use. Or pre-install it:
+
+```bash
+uv tool install git+https://github.com/gtg922r/moneta.git
+```
+
+Then start Claude Code, type `/moneta`, and describe what you want to model:
 
 ```
 > /moneta
@@ -137,7 +135,7 @@ queries:
 Run it:
 
 ```bash
-uv run moneta run my_plan.moneta.yaml --seed 42
+moneta run my_plan.moneta.yaml --seed 42
 ```
 
 ## Features
@@ -276,7 +274,7 @@ Ask four kinds of questions about your simulation results:
 Every run generates an interactive Plotly HTML report with fan charts, distribution histograms, sample paths, and scenario comparisons:
 
 ```bash
-uv run moneta run model.moneta.yaml --seed 42
+moneta run model.moneta.yaml --seed 42
 # Opens ./output/model_report.html in your browser
 ```
 

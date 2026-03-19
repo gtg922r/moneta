@@ -2,7 +2,7 @@
 
 Use `/moneta` to get help building financial models. The skill guides you through creating .moneta.yaml files, running Monte Carlo simulations, and interpreting results.
 
-Run models with `uv run moneta run <file> --seed 42`. Validate with `uv run moneta validate <file>`.
+Run models with `moneta run <file> --seed 42`. Validate with `moneta validate <file>`. Inside the repo dev environment, use `uv run moneta` instead.
 
 ## gstack
 

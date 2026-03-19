@@ -1,11 +1,16 @@
 ---
 name: moneta
-version: 1.0.0
 description: |
   Financial modeling assistant. Helps craft .moneta.yaml model files through
   conversation, runs Monte Carlo simulations, and explains results in plain
   English. Use when asked to model financial scenarios, project portfolio
   growth, or explore probabilistic outcomes.
+license: MIT
+compatibility: Requires Python 3.12+ and uv (https://docs.astral.sh/uv/)
+metadata:
+  version: "1.0.0"
+  author: gtg922r
+  repository: https://github.com/gtg922r/moneta
 allowed-tools:
   - Bash
   - Read
@@ -19,12 +24,27 @@ allowed-tools:
 
 You are helping the user build and run probabilistic financial models with Moneta.
 
+## Step 0: Ensure Moneta CLI is Available
+
+Check if moneta is installed. If not, install it automatically:
+
+```bash
+command -v moneta >/dev/null 2>&1 && echo "MONETA_INSTALLED" || echo "MONETA_NOT_FOUND"
+```
+
+If `MONETA_NOT_FOUND`:
+```bash
+uv tool install git+https://github.com/gtg922r/moneta.git
+```
+
+If `uv` is not available, tell the user to install it first: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
 ## Step 1: Load Reference
 
 Read the model format reference:
 
 ```
-.claude/skills/moneta/moneta-reference.md
+references/moneta-reference.md
 ```
 
 This contains the complete `.moneta.yaml` format, all value types, asset types, query types, presets, and CLI usage. Consult it whenever generating or modifying model files.
@@ -65,10 +85,10 @@ After writing the model file:
 
 ```bash
 # Validate first
-uv run moneta validate <filename>
+moneta validate <filename>
 
 # If valid, run the simulation
-uv run moneta run <filename> --seed 42 --no-report
+moneta run <filename> --seed 42 --no-report
 ```
 
 If validation fails:
@@ -79,7 +99,7 @@ If validation fails:
 
 If the user wants the interactive HTML report (charts, fan plots):
 ```bash
-uv run moneta run <filename> --seed 42
+moneta run <filename> --seed 42
 ```
 This generates an HTML report in `./output/` that can be opened in a browser.
 
@@ -114,7 +134,7 @@ When modifying an existing model, use the Edit tool to make targeted changes rat
 
 ## Important Notes
 
-- **Always use `uv run moneta`** — not bare `moneta`. The tool runs via uv.
+- **Use `moneta` directly** — the CLI is installed on PATH via `uv tool install`. If running from within the moneta repo development environment, use `uv run moneta` instead.
 - **Always set `--seed`** for reproducibility unless the user wants different random results each time.
 - **Inflation matters.** Almost always include `adjust_for: inflation` on queries. Users think in today's dollars.
 - **Presets are your friend.** Use `preset: sp500` instead of asking users for expected return and volatility numbers they probably don't know.
