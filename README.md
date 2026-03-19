@@ -347,6 +347,7 @@ The [`examples/`](examples/) directory contains ready-to-run models:
 git clone https://github.com/gtg922r/moneta.git
 cd moneta
 uv sync --extra dev
+uv run ruff check && uv run mypy src/  # Lint + type check
 uv run pytest                    # Run all 523 tests
 uv run pytest --cov              # With coverage report
 uv run moneta run examples/retirement_basic.moneta.yaml --seed 42
