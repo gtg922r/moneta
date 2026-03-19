@@ -95,7 +95,8 @@ class CashFlowProcessor:
                 if amount_val.frequency == "annually":
                     monthly_amount = amount_val.amount / 12.0
                 else:
-                    # "monthly" or None (shouldn't hit None for recurring due to validation)
+                    # "monthly" or None (shouldn't hit None for
+                    # recurring due to validation)
                     monthly_amount = amount_val.amount
 
             configs.append(
@@ -112,9 +113,7 @@ class CashFlowProcessor:
 
         return cls(configs)
 
-    def step(
-        self, state: SimulationState, dt: float, rng: np.random.Generator
-    ) -> None:
+    def step(self, state: SimulationState, dt: float, rng: np.random.Generator) -> None:
         """Apply cash flows for the current time step.
 
         For each active cash flow config:

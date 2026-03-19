@@ -6,7 +6,7 @@ against a ResultStore containing completed simulation data.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -16,15 +16,12 @@ from moneta.parser.models import (
     ExpectedQuery,
     PercentilesQuery,
     ProbabilityQuery,
-    Query,
 )
 from moneta.query.expressions import (
     ExpressionError,
-    Node,
     evaluate,
     parse_expression,
 )
-
 
 # ---------------------------------------------------------------------------
 # Query result dataclass
@@ -102,7 +99,8 @@ def _maybe_adjust_inflation(
         cum_inf = results.cum_inflation[:, step]
         # Avoid division by zero (should not happen in practice)
         cum_inf = np.where(cum_inf == 0.0, 1.0, cum_inf)
-        return arr / cum_inf
+        result: np.ndarray = arr / cum_inf
+        return result
     return arr
 
 
@@ -118,7 +116,8 @@ def _evaluate_expression_at_step(
     """
     node = parse_expression(expression_str)
     values = _build_values_dict(results, step)
-    return evaluate(node, values)
+    result: np.ndarray = evaluate(node, values)
+    return result
 
 
 def _evaluate_of_at_step(
@@ -184,10 +183,7 @@ def _eval_percentiles(
     """Evaluate a percentiles query."""
     # Normalize at to list of months
     at_values: list[int]
-    if isinstance(query.at, list):
-        at_values = query.at
-    else:
-        at_values = [query.at]
+    at_values = query.at if isinstance(query.at, list) else [query.at]
 
     percentiles_result: dict[int, dict[int, float]] = {}
 
@@ -197,7 +193,7 @@ def _eval_percentiles(
 
         pct_values = np.percentile(arr, query.values)
         percentiles_result[at_months] = {
-            p: float(v) for p, v in zip(query.values, pct_values)
+            p: float(v) for p, v in zip(query.values, pct_values, strict=True)
         }
 
     label = query.label or f"Percentiles of {query.of}"
@@ -251,7 +247,9 @@ def _eval_distribution(
 
 
 def evaluate_queries(
-    queries: list[ProbabilityQuery | PercentilesQuery | ExpectedQuery | DistributionQuery],
+    queries: list[
+        ProbabilityQuery | PercentilesQuery | ExpectedQuery | DistributionQuery
+    ],
     results: ResultStore,
 ) -> list[QueryResult]:
     """Evaluate all queries against the result store.

@@ -25,10 +25,7 @@ from moneta.parser.models import (
     ScenarioModel,
     SweepConfig,
     SweepScenario,
-    TransferConfig,
 )
-from moneta.parser.types import ProbabilityWindowValue
-
 
 # ===================================================================
 # Fixtures — reusable model data dicts
@@ -427,7 +424,9 @@ class TestSweepConfig:
                 ),
                 SweepScenario(
                     label="optimistic",
-                    overrides={"assets": {"equity": {"valuation_range": ["5x", "20x"]}}},
+                    overrides={
+                        "assets": {"equity": {"valuation_range": ["5x", "20x"]}}
+                    },
                 ),
             ]
         )
@@ -489,17 +488,17 @@ class TestScenarioModel:
 
     def test_bad_transfer_to_reference(self, base_model_dict: dict) -> None:
         """transfer_to referencing a non-existent asset should fail."""
-        base_model_dict["assets"]["startup_equity"]["on_liquidation"][
-            "transfer_to"
-        ] = "nonexistent_asset"
+        base_model_dict["assets"]["startup_equity"]["on_liquidation"]["transfer_to"] = (
+            "nonexistent_asset"
+        )
         with pytest.raises(ValidationError, match="no asset named 'nonexistent_asset'"):
             ScenarioModel.model_validate(base_model_dict)
 
     def test_self_transfer_raises(self, base_model_dict: dict) -> None:
         """An asset transferring to itself should fail."""
-        base_model_dict["assets"]["startup_equity"]["on_liquidation"][
-            "transfer_to"
-        ] = "startup_equity"
+        base_model_dict["assets"]["startup_equity"]["on_liquidation"]["transfer_to"] = (
+            "startup_equity"
+        )
         with pytest.raises(ValidationError, match="transfers to itself"):
             ScenarioModel.model_validate(base_model_dict)
 
@@ -515,9 +514,7 @@ class TestScenarioModel:
         with pytest.raises(ValidationError, match="time_horizon"):
             ScenarioModel.model_validate(base_model_dict)
 
-    def test_percentile_query_time_exceeds_horizon(
-        self, base_model_dict: dict
-    ) -> None:
+    def test_percentile_query_time_exceeds_horizon(self, base_model_dict: dict) -> None:
         """Percentile query with a time point beyond horizon should fail."""
         base_model_dict["queries"] = [
             {
@@ -530,9 +527,7 @@ class TestScenarioModel:
         with pytest.raises(ValidationError, match="time_horizon"):
             ScenarioModel.model_validate(base_model_dict)
 
-    def test_query_references_nonexistent_asset(
-        self, base_model_dict: dict
-    ) -> None:
+    def test_query_references_nonexistent_asset(self, base_model_dict: dict) -> None:
         """Query 'of' referencing a non-existent asset should fail."""
         base_model_dict["queries"] = [
             {
@@ -567,7 +562,9 @@ class TestScenarioModel:
         model = ScenarioModel.model_validate(base_model_dict)
         prob_query = model.queries[0]
         assert isinstance(prob_query, ProbabilityQuery)
-        assert prob_query.expression == "investment_portfolio + startup_equity > 2000000"
+        assert (
+            prob_query.expression == "investment_portfolio + startup_equity > 2000000"
+        )
 
     def test_with_sweep(self, base_model_dict: dict) -> None:
         base_model_dict["sweep"] = {

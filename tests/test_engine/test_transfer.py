@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from moneta.engine.processors.transfer import TransferProcessor, _TransferConfig
+from moneta.engine.processors.transfer import TransferProcessor
 from moneta.engine.state import SimulationState
 from moneta.parser.models import (
     GlobalConfig,
@@ -17,10 +16,11 @@ from moneta.parser.models import (
     ProbabilityQuery,
     ScenarioConfig,
     ScenarioModel,
+)
+from moneta.parser.models import (
     TransferConfig as TransferConfigModel,
 )
 from moneta.parser.types import ProbabilityWindowValue
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -162,7 +162,9 @@ class TestTransferProcessorFromScenario:
     def test_no_illiquid_assets_empty_configs(self):
         """Model with only investment assets → no transfer configs."""
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="no_transfer", time_horizon=60, simulations=50),
+            scenario=ScenarioConfig(
+                name="no_transfer", time_horizon=60, simulations=50
+            ),
             assets={
                 "portfolio": InvestmentAsset(
                     type="investment",
@@ -221,20 +223,12 @@ class TestTransferProcessorStep:
         proc.step(state, dt=1 / 12, rng=rng)
 
         # Runs 0, 1, 2: portfolio should gain 500K, equity should be 0
-        np.testing.assert_array_equal(
-            state.balances[:3, portfolio_col], 1_500_000.0
-        )
-        np.testing.assert_array_equal(
-            state.balances[:3, equity_col], 0.0
-        )
+        np.testing.assert_array_equal(state.balances[:3, portfolio_col], 1_500_000.0)
+        np.testing.assert_array_equal(state.balances[:3, equity_col], 0.0)
 
         # Runs 3-9: unchanged
-        np.testing.assert_array_equal(
-            state.balances[3:, portfolio_col], 1_000_000.0
-        )
-        np.testing.assert_array_equal(
-            state.balances[3:, equity_col], 500_000.0
-        )
+        np.testing.assert_array_equal(state.balances[3:, portfolio_col], 1_000_000.0)
+        np.testing.assert_array_equal(state.balances[3:, equity_col], 500_000.0)
 
     def test_source_asset_zeroed_after_transfer(self):
         """Source asset should be exactly 0 after transfer."""
@@ -252,9 +246,7 @@ class TestTransferProcessorStep:
 
         proc.step(state, dt=1 / 12, rng=rng)
 
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], 0.0
-        )
+        np.testing.assert_array_equal(state.balances[:, equity_col], 0.0)
 
     def test_balance_conservation(self):
         """Total balance (source + dest) is conserved across transfer."""
@@ -303,9 +295,7 @@ class TestTransferProcessorStep:
         np.testing.assert_array_equal(
             state.balances[:, portfolio_col], portfolio_before
         )
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], equity_before
-        )
+        np.testing.assert_array_equal(state.balances[:, equity_col], equity_before)
 
     def test_transfer_only_happens_once(self):
         """Transfer is idempotent — calling step multiple times doesn't re-transfer."""
@@ -341,9 +331,7 @@ class TestTransferProcessorStep:
         np.testing.assert_array_equal(
             state.balances[:, portfolio_col], portfolio_after_first
         )
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], equity_after_first
-        )
+        np.testing.assert_array_equal(state.balances[:, equity_col], equity_after_first)
 
     def test_multiple_runs_only_affected_runs_transferred(self):
         """Only runs where events fired get transferred."""
@@ -445,12 +433,8 @@ class TestTransferProcessorTwoEvents:
         proc.step(state, dt=1 / 12, rng=rng)
 
         # Should be no change — already transferred
-        np.testing.assert_array_equal(
-            state.balances[:, portfolio_col], portfolio_after
-        )
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], equity_after
-        )
+        np.testing.assert_array_equal(state.balances[:, portfolio_col], portfolio_after)
+        np.testing.assert_array_equal(state.balances[:, equity_col], equity_after)
 
     def test_transfer_from_event_0_then_event_1_fires_no_double_transfer(self):
         """Simulates the timeline: event 0 fires first, later event 1 fires.
@@ -473,12 +457,8 @@ class TestTransferProcessorTwoEvents:
         state.events_fired[:, 0] = True
         proc.step(state, dt=1 / 12, rng=rng)
 
-        np.testing.assert_array_equal(
-            state.balances[:, portfolio_col], 1_400_000.0
-        )
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], 0.0
-        )
+        np.testing.assert_array_equal(state.balances[:, portfolio_col], 1_400_000.0)
+        np.testing.assert_array_equal(state.balances[:, equity_col], 0.0)
 
         # Step 2: event 1 also fires for all runs
         state.events_fired[:, 1] = True
@@ -486,12 +466,8 @@ class TestTransferProcessorTwoEvents:
 
         # No additional transfer should happen (source is already 0,
         # and transferred flag prevents re-transfer)
-        np.testing.assert_array_equal(
-            state.balances[:, portfolio_col], 1_400_000.0
-        )
-        np.testing.assert_array_equal(
-            state.balances[:, equity_col], 0.0
-        )
+        np.testing.assert_array_equal(state.balances[:, portfolio_col], 1_400_000.0)
+        np.testing.assert_array_equal(state.balances[:, equity_col], 0.0)
 
 
 # ---------------------------------------------------------------------------
@@ -507,7 +483,9 @@ class TestTransferProcessorNoEvents:
         proc = TransferProcessor([])
         n_runs = 5
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="no_events", time_horizon=60, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="no_events", time_horizon=60, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
                     type="investment",

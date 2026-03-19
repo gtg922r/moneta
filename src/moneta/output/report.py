@@ -10,12 +10,12 @@ Generates a self-contained HTML file with:
 
 from __future__ import annotations
 
+import contextlib
 import webbrowser
 from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from moneta.engine.state import ResultStore
 from moneta.parser.models import ScenarioConfig
@@ -35,12 +35,12 @@ _FAN_COLORS = {
 
 # Colors for sweep mode (one per scenario)
 _SWEEP_COLORS = [
-    "rgba(31, 119, 180, {alpha})",   # blue
-    "rgba(255, 127, 14, {alpha})",   # orange
-    "rgba(44, 160, 44, {alpha})",    # green
-    "rgba(214, 39, 40, {alpha})",    # red
+    "rgba(31, 119, 180, {alpha})",  # blue
+    "rgba(255, 127, 14, {alpha})",  # orange
+    "rgba(44, 160, 44, {alpha})",  # green
+    "rgba(214, 39, 40, {alpha})",  # red
     "rgba(148, 103, 189, {alpha})",  # purple
-    "rgba(140, 86, 75, {alpha})",    # brown
+    "rgba(140, 86, 75, {alpha})",  # brown
     "rgba(227, 119, 194, {alpha})",  # pink
     "rgba(127, 127, 127, {alpha})",  # gray
 ]
@@ -53,7 +53,9 @@ _SAMPLE_PATH_COLOR = "rgba(150, 150, 150, 0.4)"
 # ---------------------------------------------------------------------------
 
 
-def _compute_fan_chart_data(results: ResultStore, asset_idx: int) -> dict:
+def _compute_fan_chart_data(
+    results: ResultStore, asset_idx: int
+) -> dict[str, np.ndarray]:
     """Compute percentile bands for a single asset over time.
 
     For each time step, computes p10, p25, p50, p75, p90 of the asset
@@ -118,7 +120,7 @@ def _select_sample_paths(
 
 
 def _create_fan_chart(
-    fan_data: dict,
+    fan_data: dict[str, np.ndarray],
     asset_name: str,
     sample_paths: np.ndarray | None = None,
     color_idx: int = 0,
@@ -153,50 +155,58 @@ def _create_fan_chart(
     legend_prefix = f"{show_legend_prefix} " if show_legend_prefix else ""
 
     # p10-p90 band (outermost)
-    fig.add_trace(go.Scatter(
-        x=np.concatenate([years, years[::-1]]),
-        y=np.concatenate([fan_data["p90"], fan_data["p10"][::-1]]),
-        fill="toself",
-        fillcolor=band_outer,
-        line=dict(color="rgba(0,0,0,0)"),
-        name=f"{legend_prefix}p10-p90",
-        showlegend=True,
-        hoverinfo="skip",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate([years, years[::-1]]),
+            y=np.concatenate([fan_data["p90"], fan_data["p10"][::-1]]),
+            fill="toself",
+            fillcolor=band_outer,
+            line=dict(color="rgba(0,0,0,0)"),
+            name=f"{legend_prefix}p10-p90",
+            showlegend=True,
+            hoverinfo="skip",
+        )
+    )
 
     # p25-p75 band (inner)
-    fig.add_trace(go.Scatter(
-        x=np.concatenate([years, years[::-1]]),
-        y=np.concatenate([fan_data["p75"], fan_data["p25"][::-1]]),
-        fill="toself",
-        fillcolor=band_inner,
-        line=dict(color="rgba(0,0,0,0)"),
-        name=f"{legend_prefix}p25-p75",
-        showlegend=True,
-        hoverinfo="skip",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate([years, years[::-1]]),
+            y=np.concatenate([fan_data["p75"], fan_data["p25"][::-1]]),
+            fill="toself",
+            fillcolor=band_inner,
+            line=dict(color="rgba(0,0,0,0)"),
+            name=f"{legend_prefix}p25-p75",
+            showlegend=True,
+            hoverinfo="skip",
+        )
+    )
 
     # p50 median line
-    fig.add_trace(go.Scatter(
-        x=years,
-        y=fan_data["p50"],
-        mode="lines",
-        line=dict(color=line_color, width=2),
-        name=f"{legend_prefix}Median (p50)",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=years,
+            y=fan_data["p50"],
+            mode="lines",
+            line=dict(color=line_color, width=2),
+            name=f"{legend_prefix}Median (p50)",
+        )
+    )
 
     # Sample paths
     if sample_paths is not None:
         for i in range(sample_paths.shape[0]):
-            fig.add_trace(go.Scatter(
-                x=years,
-                y=sample_paths[i],
-                mode="lines",
-                line=dict(color=_SAMPLE_PATH_COLOR, width=1),
-                name=f"Sample {i + 1}",
-                showlegend=(i == 0),
-                legendgroup="samples",
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=years,
+                    y=sample_paths[i],
+                    mode="lines",
+                    line=dict(color=_SAMPLE_PATH_COLOR, width=1),
+                    name=f"Sample {i + 1}",
+                    showlegend=(i == 0),
+                    legendgroup="samples",
+                )
+            )
 
     fig.update_layout(
         title=f"{asset_name} \u2014 Value Distribution",
@@ -226,14 +236,16 @@ def _create_histogram(
     """
     fig = go.Figure()
 
-    fig.add_trace(go.Histogram(
-        x=values,
-        nbinsx=bins,
-        marker_color="rgba(31, 119, 180, 0.7)",
-        marker_line_color="rgba(31, 119, 180, 1.0)",
-        marker_line_width=1,
-        name="Outcomes",
-    ))
+    fig.add_trace(
+        go.Histogram(
+            x=values,
+            nbinsx=bins,
+            marker_color="rgba(31, 119, 180, 0.7)",
+            marker_line_color="rgba(31, 119, 180, 1.0)",
+            marker_line_width=1,
+            name="Outcomes",
+        )
+    )
 
     fig.update_layout(
         title=title,
@@ -277,15 +289,17 @@ def _create_probability_timeline(
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(
-        x=years,
-        y=probabilities,
-        mode="lines",
-        line=dict(color="rgba(31, 119, 180, 1.0)", width=2),
-        name="Probability",
-        fill="tozeroy",
-        fillcolor="rgba(31, 119, 180, 0.1)",
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=years,
+            y=probabilities,
+            mode="lines",
+            line=dict(color="rgba(31, 119, 180, 1.0)", width=2),
+            name="Probability",
+            fill="tozeroy",
+            fillcolor="rgba(31, 119, 180, 0.1)",
+        )
+    )
 
     fig.update_layout(
         title=f"Probability Timeline: {expression_str}",
@@ -332,40 +346,46 @@ def _create_sweep_fan_chart(
         line_color = color_template.format(alpha="1.0")
 
         # p10-p90 band
-        fig.add_trace(go.Scatter(
-            x=np.concatenate([years, years[::-1]]),
-            y=np.concatenate([fan_data["p90"], fan_data["p10"][::-1]]),
-            fill="toself",
-            fillcolor=band_outer,
-            line=dict(color="rgba(0,0,0,0)"),
-            name=f"{label} p10-p90",
-            legendgroup=label,
-            showlegend=True,
-            hoverinfo="skip",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=np.concatenate([years, years[::-1]]),
+                y=np.concatenate([fan_data["p90"], fan_data["p10"][::-1]]),
+                fill="toself",
+                fillcolor=band_outer,
+                line=dict(color="rgba(0,0,0,0)"),
+                name=f"{label} p10-p90",
+                legendgroup=label,
+                showlegend=True,
+                hoverinfo="skip",
+            )
+        )
 
         # p25-p75 band
-        fig.add_trace(go.Scatter(
-            x=np.concatenate([years, years[::-1]]),
-            y=np.concatenate([fan_data["p75"], fan_data["p25"][::-1]]),
-            fill="toself",
-            fillcolor=band_inner,
-            line=dict(color="rgba(0,0,0,0)"),
-            name=f"{label} p25-p75",
-            legendgroup=label,
-            showlegend=True,
-            hoverinfo="skip",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=np.concatenate([years, years[::-1]]),
+                y=np.concatenate([fan_data["p75"], fan_data["p25"][::-1]]),
+                fill="toself",
+                fillcolor=band_inner,
+                line=dict(color="rgba(0,0,0,0)"),
+                name=f"{label} p25-p75",
+                legendgroup=label,
+                showlegend=True,
+                hoverinfo="skip",
+            )
+        )
 
         # p50 line
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=fan_data["p50"],
-            mode="lines",
-            line=dict(color=line_color, width=2),
-            name=f"{label} Median",
-            legendgroup=label,
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=years,
+                y=fan_data["p50"],
+                mode="lines",
+                line=dict(color=line_color, width=2),
+                name=f"{label} Median",
+                legendgroup=label,
+            )
+        )
 
     fig.update_layout(
         title=f"{asset_name} \u2014 Scenario Comparison",
@@ -425,16 +445,20 @@ def _create_sweep_summary_html(
     html += "<h2>Scenario Comparison</h2>\n"
     html += '<table style="border-collapse: collapse; width: 100%;">\n'
     html += "<thead><tr>"
-    html += '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Query</th>'
+    html += (
+        '<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Query</th>'
+    )
     for label in header_labels:
-        html += f'<th style="border: 1px solid #ddd; padding: 8px; text-align: right;">{label}</th>'
+        th_style = "border: 1px solid #ddd; padding: 8px; text-align: right;"
+        html += f'<th style="{th_style}">{label}</th>'
     html += "</tr></thead>\n<tbody>\n"
 
     for query_label, values in rows:
         html += "<tr>"
         html += f'<td style="border: 1px solid #ddd; padding: 8px;">{query_label}</td>'
         for val in values:
-            html += f'<td style="border: 1px solid #ddd; padding: 8px; text-align: right;">{val}</td>'
+            td_style = "border: 1px solid #ddd; padding: 8px; text-align: right;"
+            html += f'<td style="{td_style}">{val}</td>'
         html += "</tr>\n"
 
     html += "</tbody></table>\n</div>\n"
@@ -493,7 +517,9 @@ def generate_report(
         # Overlaid fan charts per asset
         for asset_name, asset_idx in results.asset_index.items():
             fig = _create_sweep_fan_chart(sweep_results, asset_name, asset_idx)
-            figures_html.append(pio.to_html(fig, full_html=False, include_plotlyjs=False))
+            figures_html.append(
+                pio.to_html(fig, full_html=False, include_plotlyjs=False)
+            )
 
         # Comparison summary table
         summary = _create_sweep_summary_html(sweep_results)
@@ -507,25 +533,32 @@ def generate_report(
             fan_data = _compute_fan_chart_data(results, asset_idx)
             sample_paths = _select_sample_paths(results, asset_idx, n_samples=5, seed=0)
             fig = _create_fan_chart(fan_data, asset_name, sample_paths=sample_paths)
-            figures_html.append(pio.to_html(fig, full_html=False, include_plotlyjs=False))
+            figures_html.append(
+                pio.to_html(fig, full_html=False, include_plotlyjs=False)
+            )
 
     # Distribution histograms from query results
     for qr in query_results:
         if qr.query_type == "distribution" and qr.histogram_bins is not None:
             # Reconstruct approximate values from bins for a plotly histogram
+            assert qr.histogram_counts is not None
             bin_centers = (qr.histogram_bins[:-1] + qr.histogram_bins[1:]) / 2.0
-            fig = _create_histogram(bin_centers, title=qr.label, bins=len(qr.histogram_counts))
+            fig = _create_histogram(
+                bin_centers, title=qr.label, bins=len(qr.histogram_counts)
+            )
             # Use a bar chart based on precomputed histogram instead
             fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=bin_centers,
-                y=qr.histogram_counts,
-                marker_color="rgba(31, 119, 180, 0.7)",
-                marker_line_color="rgba(31, 119, 180, 1.0)",
-                marker_line_width=1,
-                name="Outcomes",
-                width=(qr.histogram_bins[1] - qr.histogram_bins[0]) * 0.9,
-            ))
+            fig.add_trace(
+                go.Bar(
+                    x=bin_centers,
+                    y=qr.histogram_counts,
+                    marker_color="rgba(31, 119, 180, 0.7)",
+                    marker_line_color="rgba(31, 119, 180, 1.0)",
+                    marker_line_width=1,
+                    name="Outcomes",
+                    width=(qr.histogram_bins[1] - qr.histogram_bins[0]) * 0.9,
+                )
+            )
             fig.update_layout(
                 title=qr.label,
                 xaxis_title="Value ($)",
@@ -533,7 +566,9 @@ def generate_report(
                 template="plotly_white",
                 bargap=0.05,
             )
-            figures_html.append(pio.to_html(fig, full_html=False, include_plotlyjs=False))
+            figures_html.append(
+                pio.to_html(fig, full_html=False, include_plotlyjs=False)
+            )
 
     # Probability timelines
     for qr in query_results:
@@ -582,9 +617,7 @@ def generate_report(
     output_path.write_text(full_html, encoding="utf-8")
 
     # Try to open in browser (best effort)
-    try:
+    with contextlib.suppress(Exception):
         webbrowser.open(output_path.as_uri())
-    except Exception:
-        pass
 
     return output_path

@@ -73,8 +73,7 @@ def build_pipeline(
         for asset in model.assets.values()
     )
     has_transfers = any(
-        isinstance(asset, IlliquidEquityAsset)
-        for asset in model.assets.values()
+        isinstance(asset, IlliquidEquityAsset) for asset in model.assets.values()
     )
 
     # 1. EventProcessor (if any events defined)
@@ -87,9 +86,7 @@ def build_pipeline(
 
     # 3. CashFlowProcessor (if any cash flows defined)
     if model.cash_flows:
-        pipeline.append(
-            CashFlowProcessor.from_scenario(model, state.asset_index)
-        )
+        pipeline.append(CashFlowProcessor.from_scenario(model, state.asset_index))
 
     # 4. GrowthProcessor (if any growth configs)
     growth_configs: dict[str, GrowthConfig] = {}
@@ -127,9 +124,7 @@ def build_pipeline(
     return pipeline
 
 
-def run_simulation(
-    model: ScenarioModel, seed: int | None = None
-) -> ResultStore:
+def run_simulation(model: ScenarioModel, seed: int | None = None) -> ResultStore:
     """Run Monte Carlo simulation on the given model.
 
     Returns a ResultStore with pre-allocated arrays filled with

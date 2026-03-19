@@ -19,11 +19,9 @@ from __future__ import annotations
 import math
 
 import numpy as np
-import pytest
 
 from moneta.engine.orchestrator import run_simulation
-from moneta.engine.processors.cash_flow import CashFlowProcessor
-from moneta.engine.processors.events import EventProcessor, _compute_hazard_rate
+from moneta.engine.processors.events import _compute_hazard_rate
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
 from moneta.engine.state import ResultStore, SimulationState
@@ -43,7 +41,6 @@ from moneta.parser.models import (
 )
 from moneta.parser.types import CashFlowAmountValue, ProbabilityWindowValue
 from moneta.query.engine import evaluate_queries
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -86,7 +83,9 @@ def _make_investment_model(
     """Build a simple investment-only ScenarioModel."""
     if queries is None:
         queries = [
-            ProbabilityQuery(type="probability", expression="portfolio > 0", at=time_horizon_months)
+            ProbabilityQuery(
+                type="probability", expression="portfolio > 0", at=time_horizon_months
+            )
         ]
     return ScenarioModel(
         scenario=ScenarioConfig(
@@ -165,7 +164,9 @@ class TestGBMFormula:
         proc.step(state, DT, rng)
 
         np.testing.assert_allclose(
-            state.balances[0, 0], expected, rtol=1e-12,
+            state.balances[0, 0],
+            expected,
+            rtol=1e-12,
             err_msg="GBM single-step does not match hand-computed formula",
         )
 
@@ -205,7 +206,9 @@ class TestGBMFormula:
 
         # Match the analytical result
         np.testing.assert_allclose(
-            state.balances[0, 0], expected, rtol=1e-10,
+            state.balances[0, 0],
+            expected,
+            rtol=1e-10,
             err_msg=f"Expected S(10) = {expected:.2f}, got {state.balances[0, 0]:.2f}",
         )
 
@@ -266,7 +269,7 @@ class TestGBMFormula:
         for _ in range(n_steps):
             proc.step(state, DT, rng)
 
-        theoretical_var = (s0 ** 2) * math.exp(2 * mu * T) * (math.exp(sigma ** 2 * T) - 1)
+        theoretical_var = (s0**2) * math.exp(2 * mu * T) * (math.exp(sigma**2 * T) - 1)
         sample_var = float(np.var(state.balances[:, 0]))
 
         rel_error = abs(sample_var - theoretical_var) / theoretical_var
@@ -335,8 +338,7 @@ class TestGBMFormula:
             proc.step(state, DT, rng)
 
         assert np.all(state.balances > 0), (
-            "GBM produced non-positive values. Min = "
-            f"{state.balances.min():.6e}"
+            f"GBM produced non-positive values. Min = {state.balances.min():.6e}"
         )
         assert not np.any(np.isnan(state.balances)), "GBM produced NaN values"
         assert not np.any(np.isinf(state.balances)), "GBM produced Inf values"
@@ -371,7 +373,9 @@ class TestInflationFormula:
         proc = InflationProcessor(config)
 
         n_runs = 100
-        state = _make_simple_state(n_runs=n_runs, initial_balance=100_000.0, inflation_rate=0.05)
+        state = _make_simple_state(
+            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=0.05
+        )
 
         rng = np.random.default_rng(42)
         for _ in range(120):
@@ -389,7 +393,9 @@ class TestInflationFormula:
         )
 
         np.testing.assert_allclose(
-            state.inflation_rate[0], x, rtol=1e-12,
+            state.inflation_rate[0],
+            x,
+            rtol=1e-12,
             err_msg="O-U deterministic path does not match hand computation",
         )
 
@@ -418,7 +424,9 @@ class TestInflationFormula:
             mean_reversion_speed=theta,
         )
         proc = InflationProcessor(config)
-        state = _make_simple_state(n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu)
+        state = _make_simple_state(
+            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu
+        )
         rng = np.random.default_rng(42)
 
         for _ in range(600):
@@ -428,7 +436,7 @@ class TestInflationFormula:
         # For Euler-Maruyama discretization with dt=1/12:
         # The discrete variance converges to sigma^2 * dt / (2*theta*dt - (theta*dt)^2)
         # but for small theta*dt, this is approximately sigma^2 / (2*theta).
-        theoretical_var = sigma ** 2 / (2 * theta)
+        theoretical_var = sigma**2 / (2 * theta)
         sample_var = float(np.var(state.inflation_rate))
 
         rel_error = abs(sample_var - theoretical_var) / theoretical_var
@@ -455,7 +463,9 @@ class TestInflationFormula:
             mean_reversion_speed=theta,
         )
         proc = InflationProcessor(config)
-        state = _make_simple_state(n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu)
+        state = _make_simple_state(
+            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu
+        )
         rng = np.random.default_rng(42)
 
         for _ in range(600):
@@ -487,7 +497,9 @@ class TestInflationFormula:
 
         n_runs = 1
         n_steps = 120
-        state = _make_simple_state(n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu)
+        state = _make_simple_state(
+            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=mu
+        )
         rng = np.random.default_rng(42)
 
         for _ in range(n_steps):
@@ -499,7 +511,9 @@ class TestInflationFormula:
         expected = (1.0 + mu / 12.0) ** n_steps
 
         np.testing.assert_allclose(
-            state.cum_inflation[0], expected, rtol=1e-12,
+            state.cum_inflation[0],
+            expected,
+            rtol=1e-12,
             err_msg=(
                 f"Cumulative inflation mismatch: expected {expected:.10f}, "
                 f"got {state.cum_inflation[0]:.10f}"
@@ -524,7 +538,9 @@ class TestInflationFormula:
         )
         proc = InflationProcessor(config)
         state = _make_simple_state(
-            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=0.03,
+            n_runs=n_runs,
+            initial_balance=100_000.0,
+            inflation_rate=0.03,
         )
         rng = np.random.default_rng(42)
 
@@ -540,7 +556,7 @@ class TestInflationFormula:
         )
 
         # Mean should be approximately (1.03)^30 = 2.4273...
-        theoretical_approx = 1.03 ** 30
+        theoretical_approx = 1.03**30
         sample_mean = float(ci.mean())
         rel_error = abs(sample_mean - theoretical_approx) / theoretical_approx
         assert rel_error < 0.10, (
@@ -568,12 +584,12 @@ class TestHazardRateCalibration:
         1 - (1-h)^N = p to 12 decimal places.
         """
         test_cases = [
-            (0.20, 36),   # 20% in 3 years
-            (0.50, 12),   # 50% in 1 year
-            (0.60, 12),   # 60% in 1 year
-            (0.80, 60),   # 80% in 5 years
+            (0.20, 36),  # 20% in 3 years
+            (0.50, 12),  # 50% in 1 year
+            (0.60, 12),  # 60% in 1 year
+            (0.80, 60),  # 80% in 5 years
             (0.01, 360),  # 1% in 30 years
-            (0.99, 6),    # 99% in 6 months
+            (0.99, 6),  # 99% in 6 months
         ]
 
         for p, n in test_cases:
@@ -583,7 +599,9 @@ class TestHazardRateCalibration:
             reconstructed = 1.0 - (1.0 - h) ** n
 
             np.testing.assert_allclose(
-                reconstructed, p, atol=1e-12,
+                reconstructed,
+                p,
+                atol=1e-12,
                 err_msg=(
                     f"Hazard rate calibration failed for p={p}, N={n}: "
                     f"h={h}, reconstructed p={reconstructed}"
@@ -601,11 +619,16 @@ class TestHazardRateCalibration:
         n_runs = 500_000
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="test", time_horizon=n_window, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="test", time_horizon=n_window, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
-                    type="investment", initial_balance=100_000.0,
-                    growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+                    type="investment",
+                    initial_balance=100_000.0,
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
                 ),
                 "equity": IlliquidEquityAsset(
                     type="illiquid_equity",
@@ -613,7 +636,9 @@ class TestHazardRateCalibration:
                     liquidity_events=[
                         LiquidityEvent(
                             probability=ProbabilityWindowValue(
-                                probability=p_target, start_month=0, end_month=n_window,
+                                probability=p_target,
+                                start_month=0,
+                                end_month=n_window,
                             ),
                             valuation_range=(5.0, 5.0),
                         ),
@@ -623,10 +648,16 @@ class TestHazardRateCalibration:
             },
             global_config=GlobalConfig(
                 inflation=InflationConfig(
-                    model="mean_reverting", long_term_rate=0.03, volatility=0.0,
+                    model="mean_reverting",
+                    long_term_rate=0.03,
+                    volatility=0.0,
                 )
             ),
-            queries=[ProbabilityQuery(type="probability", expression="portfolio > 0", at=n_window)],
+            queries=[
+                ProbabilityQuery(
+                    type="probability", expression="portfolio > 0", at=n_window
+                )
+            ],
         )
 
         results = run_simulation(model, seed=42)
@@ -653,16 +684,21 @@ class TestHazardRateCalibration:
         """
         p_target = 0.60
         start_month = 60  # year 5
-        end_month = 72    # year 6
+        end_month = 72  # year 6
         n_runs = 500_000
         time_horizon = 72
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="test", time_horizon=time_horizon, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="test", time_horizon=time_horizon, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
-                    type="investment", initial_balance=100_000.0,
-                    growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+                    type="investment",
+                    initial_balance=100_000.0,
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
                 ),
                 "equity": IlliquidEquityAsset(
                     type="illiquid_equity",
@@ -682,10 +718,16 @@ class TestHazardRateCalibration:
             },
             global_config=GlobalConfig(
                 inflation=InflationConfig(
-                    model="mean_reverting", long_term_rate=0.03, volatility=0.0,
+                    model="mean_reverting",
+                    long_term_rate=0.03,
+                    volatility=0.0,
                 )
             ),
-            queries=[ProbabilityQuery(type="probability", expression="portfolio > 0", at=time_horizon)],
+            queries=[
+                ProbabilityQuery(
+                    type="probability", expression="portfolio > 0", at=time_horizon
+                )
+            ],
         )
 
         results = run_simulation(model, seed=42)
@@ -700,7 +742,8 @@ class TestHazardRateCalibration:
 
         assert ci_low <= observed_rate <= ci_high, (
             f"Event fire rate {observed_rate:.4f} outside 99% CI "
-            f"[{ci_low:.4f}, {ci_high:.4f}] for p={p_target} in window [{start_month},{end_month}]"
+            f"[{ci_low:.4f}, {ci_high:.4f}] for p={p_target} "
+            f"in window [{start_month},{end_month}]"
         )
 
     def test_multiple_events_independence(self):
@@ -714,11 +757,16 @@ class TestHazardRateCalibration:
         time_horizon = 36
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="test", time_horizon=time_horizon, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="test", time_horizon=time_horizon, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
-                    type="investment", initial_balance=100_000.0,
-                    growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+                    type="investment",
+                    initial_balance=100_000.0,
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
                 ),
                 "equity": IlliquidEquityAsset(
                     type="illiquid_equity",
@@ -726,13 +774,17 @@ class TestHazardRateCalibration:
                     liquidity_events=[
                         LiquidityEvent(
                             probability=ProbabilityWindowValue(
-                                probability=p, start_month=0, end_month=time_horizon,
+                                probability=p,
+                                start_month=0,
+                                end_month=time_horizon,
                             ),
                             valuation_range=(1.0, 1.0),
                         ),
                         LiquidityEvent(
                             probability=ProbabilityWindowValue(
-                                probability=p, start_month=0, end_month=time_horizon,
+                                probability=p,
+                                start_month=0,
+                                end_month=time_horizon,
                             ),
                             valuation_range=(1.0, 1.0),
                         ),
@@ -742,10 +794,16 @@ class TestHazardRateCalibration:
             },
             global_config=GlobalConfig(
                 inflation=InflationConfig(
-                    model="mean_reverting", long_term_rate=0.03, volatility=0.0,
+                    model="mean_reverting",
+                    long_term_rate=0.03,
+                    volatility=0.0,
                 )
             ),
-            queries=[ProbabilityQuery(type="probability", expression="portfolio > 0", at=time_horizon)],
+            queries=[
+                ProbabilityQuery(
+                    type="probability", expression="portfolio > 0", at=time_horizon
+                )
+            ],
         )
 
         results = run_simulation(model, seed=42)
@@ -791,7 +849,8 @@ class TestConservationLaws:
 
         Run a model where equity liquidates (100% probability in month 1-12)
         and transfers to portfolio. For each run:
-            portfolio_final + equity_final = portfolio_initial + equity_liquidation_value
+            portfolio_final + equity_final
+            = portfolio_initial + equity_liquidation_value
 
         With valuation_range (1x, 1x) the liquidation value equals
         current_valuation exactly.
@@ -802,11 +861,16 @@ class TestConservationLaws:
         time_horizon = 12
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="test", time_horizon=time_horizon, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="test", time_horizon=time_horizon, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
-                    type="investment", initial_balance=portfolio_init,
-                    growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+                    type="investment",
+                    initial_balance=portfolio_init,
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
                 ),
                 "equity": IlliquidEquityAsset(
                     type="illiquid_equity",
@@ -814,7 +878,9 @@ class TestConservationLaws:
                     liquidity_events=[
                         LiquidityEvent(
                             probability=ProbabilityWindowValue(
-                                probability=1.0, start_month=0, end_month=time_horizon,
+                                probability=1.0,
+                                start_month=0,
+                                end_month=time_horizon,
                             ),
                             valuation_range=(1.0, 1.0),
                         ),
@@ -824,10 +890,16 @@ class TestConservationLaws:
             },
             global_config=GlobalConfig(
                 inflation=InflationConfig(
-                    model="mean_reverting", long_term_rate=0.0, volatility=0.0,
+                    model="mean_reverting",
+                    long_term_rate=0.0,
+                    volatility=0.0,
                 )
             ),
-            queries=[ProbabilityQuery(type="probability", expression="portfolio > 0", at=time_horizon)],
+            queries=[
+                ProbabilityQuery(
+                    type="probability", expression="portfolio > 0", at=time_horizon
+                )
+            ],
         )
 
         results = run_simulation(model, seed=42)
@@ -846,13 +918,16 @@ class TestConservationLaws:
         expected_total = portfolio_init + equity_val
 
         np.testing.assert_allclose(
-            total_final, expected_total, rtol=1e-10,
+            total_final,
+            expected_total,
+            rtol=1e-10,
             err_msg="Transfer did not conserve total value",
         )
 
     def test_cash_flow_balance_identity(self):
         """For zero growth, zero inflation:
-            final_balance = initial + sum(deposits) - sum(withdrawals) + shortfall_correction
+            final_balance = initial + sum(deposits)
+            - sum(withdrawals) + shortfall_correction
 
         Since allow_negative=True, shortfall is 0 and the balance equation
         is exact. Run deterministic (zero vol) for exact arithmetic.
@@ -885,7 +960,9 @@ class TestConservationLaws:
         expected = initial + deposit * n_steps
 
         np.testing.assert_allclose(
-            final, expected, rtol=1e-10,
+            final,
+            expected,
+            rtol=1e-10,
             err_msg=(
                 f"Cash flow balance identity failed: expected {expected}, "
                 f"got {final[0]}"
@@ -931,27 +1008,43 @@ class TestConservationLaws:
         # After step 9: 10 withdrawals of 10K = 100K withdrawn, balance = 0
         balance_step9 = results.balances[0, 9, 0]
         np.testing.assert_allclose(
-            balance_step9, 0.0, atol=1e-10,
+            balance_step9,
+            0.0,
+            atol=1e-10,
             err_msg=f"After 10 withdrawals, balance should be 0, got {balance_step9}",
         )
         shortfall_step9 = results.cash_flow_shortfall[0, 9]
         np.testing.assert_allclose(
-            shortfall_step9, 0.0, atol=1e-10,
-            err_msg=f"After 10 withdrawals, shortfall should be 0, got {shortfall_step9}",
+            shortfall_step9,
+            0.0,
+            atol=1e-10,
+            err_msg=(
+                f"After 10 withdrawals, shortfall should be 0, got {shortfall_step9}"
+            ),
         )
 
         # After step 10: 11th withdrawal, balance clamped to 0, shortfall += 10K
         shortfall_step10 = results.cash_flow_shortfall[0, 10]
         np.testing.assert_allclose(
-            shortfall_step10, 10_000.0, atol=1e-10,
-            err_msg=f"After 11 withdrawals, shortfall should be $10K, got {shortfall_step10}",
+            shortfall_step10,
+            10_000.0,
+            atol=1e-10,
+            err_msg=(
+                f"After 11 withdrawals, shortfall should be $10K, "
+                f"got {shortfall_step10}"
+            ),
         )
 
         # After step 11: 12th withdrawal, shortfall += another 10K = 20K
         shortfall_step11 = results.cash_flow_shortfall[0, 11]
         np.testing.assert_allclose(
-            shortfall_step11, 20_000.0, atol=1e-10,
-            err_msg=f"After 12 withdrawals, shortfall should be $20K, got {shortfall_step11}",
+            shortfall_step11,
+            20_000.0,
+            atol=1e-10,
+            err_msg=(
+                f"After 12 withdrawals, shortfall should be $20K, "
+                f"got {shortfall_step11}"
+            ),
         )
 
     def test_non_negative_balance_when_clamped(self):
@@ -1027,7 +1120,7 @@ class TestConservationLaws:
         results = run_simulation(model, seed=42)
         query_results = evaluate_queries(model.queries, results)
 
-        nominal_p50 = query_results[0].percentiles[n_steps][50]
+        query_results[0].percentiles[n_steps][50]
         real_p50 = query_results[1].percentiles[n_steps][50]
 
         # The median of (X / Y) is not exactly median(X) / median(Y),
@@ -1043,7 +1136,9 @@ class TestConservationLaws:
         expected_real_p50 = float(np.percentile(real_vals, 50))
 
         np.testing.assert_allclose(
-            real_p50, expected_real_p50, rtol=1e-10,
+            real_p50,
+            expected_real_p50,
+            rtol=1e-10,
             err_msg=(
                 f"Inflation-adjusted query P50: expected {expected_real_p50:.2f}, "
                 f"got {real_p50:.2f}"
@@ -1095,7 +1190,8 @@ class TestNumericalStability:
         sample_mean = float(vals.mean())
         # Should be within ~20% given stochastic noise
         assert 0.5 * expected_mean < sample_mean < 2.0 * expected_mean, (
-            f"Mean {sample_mean:.2f} out of reasonable range for expected {expected_mean:.2f}"
+            f"Mean {sample_mean:.2f} out of reasonable range "
+            f"for expected {expected_mean:.2f}"
         )
 
     def test_large_balance_small_withdrawal(self):
@@ -1131,7 +1227,9 @@ class TestNumericalStability:
         expected = initial + withdrawal * n_steps  # 10_000_000 - 12 = 9_999_988
 
         np.testing.assert_allclose(
-            final, expected, rtol=1e-12,
+            final,
+            expected,
+            rtol=1e-12,
             err_msg=(
                 f"Large balance small withdrawal: expected {expected}, got {final}. "
                 f"Difference = {abs(final - expected)}"
@@ -1156,7 +1254,9 @@ class TestNumericalStability:
 
         # Run with the processor
         proc = InflationProcessor(config)
-        state = _make_simple_state(n_runs=n_runs, initial_balance=100_000.0, inflation_rate=0.03)
+        state = _make_simple_state(
+            n_runs=n_runs, initial_balance=100_000.0, inflation_rate=0.03
+        )
         rng = np.random.default_rng(seed)
 
         for _ in range(n_steps):
@@ -1174,10 +1274,12 @@ class TestNumericalStability:
             dw = rng2.standard_normal(1)[0] * sqrt_dt  # match shape (n_runs,)
             dx = 0.5 * (0.03 - x) * DT + 0.01 * dw
             x += dx
-            ci *= (1.0 + x * DT)
+            ci *= 1.0 + x * DT
 
         np.testing.assert_allclose(
-            processor_ci, ci, rtol=1e-10,
+            processor_ci,
+            ci,
+            rtol=1e-10,
             err_msg=(
                 f"Cumulative inflation chain mismatch after 360 months: "
                 f"processor={processor_ci:.12f}, manual={ci:.12f}"
@@ -1225,8 +1327,12 @@ class TestNumericalStability:
         results = evaluate_queries(queries, store)
         assert results[0].percentiles is not None
         p50 = results[0].percentiles[n_steps][50]
-        assert not math.isnan(p50), "Inflation-adjusted query produced NaN when cum_inflation=0"
-        assert not math.isinf(p50), "Inflation-adjusted query produced Inf when cum_inflation=0"
+        assert not math.isnan(p50), (
+            "Inflation-adjusted query produced NaN when cum_inflation=0"
+        )
+        assert not math.isinf(p50), (
+            "Inflation-adjusted query produced Inf when cum_inflation=0"
+        )
 
 
 # ===========================================================================
@@ -1276,11 +1382,14 @@ class TestEndToEndScenarios:
 
         # All runs identical (allow tiny floating-point noise)
         assert final.std() < 1e-6, (
-            f"All runs should be identical with zero stochasticity. std = {final.std():.6e}"
+            f"All runs should be identical with zero stochasticity. "
+            f"std = {final.std():.6e}"
         )
 
         np.testing.assert_allclose(
-            final[0], expected, rtol=1e-12,
+            final[0],
+            expected,
+            rtol=1e-12,
             err_msg=f"Expected exactly ${expected:,.2f}, got ${final[0]:,.2f}",
         )
 
@@ -1310,12 +1419,16 @@ class TestEndToEndScenarios:
 
         # All runs identical with zero vol (allow tiny floating-point noise)
         assert final.std() < 1e-6, (
-            f"All runs should be identical with zero volatility. std = {final.std():.6e}"
+            f"All runs should be identical with zero volatility. "
+            f"std = {final.std():.6e}"
         )
 
         # Verify to within 1 cent
         np.testing.assert_allclose(
-            final[0], expected, atol=0.01, rtol=1e-10,
+            final[0],
+            expected,
+            atol=0.01,
+            rtol=1e-10,
             err_msg=f"Expected ${expected:,.2f}, got ${final[0]:,.2f}",
         )
 
@@ -1331,12 +1444,16 @@ class TestEndToEndScenarios:
         n_steps = 360  # 30 years
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="retirement", time_horizon=n_steps, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="retirement", time_horizon=n_steps, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
                     type="investment",
                     initial_balance=500_000.0,
-                    growth=GrowthConfig(model="gbm", expected_return=0.07, volatility=0.15),
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.07, volatility=0.15
+                    ),
                 ),
             },
             global_config=GlobalConfig(
@@ -1374,7 +1491,8 @@ class TestEndToEndScenarios:
         # This is very aggressive; with 7%/15% GBM growth over 30 years,
         # solvency is low. Expected around 5% with seed=42.
         assert 1.0 <= solvency_pct <= 15.0, (
-            f"Solvency probability {solvency_pct:.1f}% outside expected range [1%, 15%]. "
+            f"Solvency probability {solvency_pct:.1f}% "
+            f"outside expected range [1%, 15%]. "
             "If the engine changed, update this regression bound."
         )
 
@@ -1395,7 +1513,8 @@ class TestEndToEndScenarios:
         Pipeline order per step: events -> transfer -> cash_flow -> growth -> inflation.
 
         Month 0: event fires immediately (100% prob, h=1.0), equity set to
-        500K * 5 = 2.5M. Transfer moves 2.5M to portfolio (portfolio = 100K + 2.5M = 2.6M),
+        500K * 5 = 2.5M. Transfer moves 2.5M to portfolio
+        (portfolio = 100K + 2.5M = 2.6M),
         equity = 0. Then growth applies: portfolio *= exp(0.07/12).
         Month 1-11: growth continues on portfolio.
 
@@ -1409,12 +1528,16 @@ class TestEndToEndScenarios:
         n_runs = 10
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(name="equity_exit", time_horizon=n_steps, simulations=n_runs),
+            scenario=ScenarioConfig(
+                name="equity_exit", time_horizon=n_steps, simulations=n_runs
+            ),
             assets={
                 "portfolio": InvestmentAsset(
                     type="investment",
                     initial_balance=portfolio_init,
-                    growth=GrowthConfig(model="gbm", expected_return=mu, volatility=0.0),
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=mu, volatility=0.0
+                    ),
                 ),
                 "equity": IlliquidEquityAsset(
                     type="illiquid_equity",
@@ -1422,7 +1545,9 @@ class TestEndToEndScenarios:
                     liquidity_events=[
                         LiquidityEvent(
                             probability=ProbabilityWindowValue(
-                                probability=1.0, start_month=0, end_month=n_steps,
+                                probability=1.0,
+                                start_month=0,
+                                end_month=n_steps,
                             ),
                             valuation_range=(multiplier, multiplier),
                         ),
@@ -1432,7 +1557,9 @@ class TestEndToEndScenarios:
             },
             global_config=GlobalConfig(
                 inflation=InflationConfig(
-                    model="mean_reverting", long_term_rate=0.0, volatility=0.0,
+                    model="mean_reverting",
+                    long_term_rate=0.0,
+                    volatility=0.0,
                 )
             ),
             queries=[
@@ -1465,7 +1592,9 @@ class TestEndToEndScenarios:
         )
 
         np.testing.assert_allclose(
-            final[0], expected_final, rtol=1e-10,
+            final[0],
+            expected_final,
+            rtol=1e-10,
             err_msg=(
                 f"Equity exit + growth: expected ${expected_final:,.2f}, "
                 f"got ${final[0]:,.2f}"

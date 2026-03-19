@@ -16,10 +16,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
-
 
 # ---------------------------------------------------------------------------
 # AST node types
@@ -58,7 +56,7 @@ class CompareNode:
     right: Node
 
 
-Node = Union[NumberNode, AssetNode, BinOpNode, CompareNode]
+Node = NumberNode | AssetNode | BinOpNode | CompareNode
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +96,6 @@ def tokenize(expression: str) -> list[Token]:
     """
     tokens: list[Token] = []
     pos = 0
-    remaining = expression
 
     while pos < len(expression):
         # Skip whitespace
@@ -317,18 +314,14 @@ def evaluate(
     if isinstance(node, NumberNode):
         # Broadcast the scalar to match the size of other arrays.
         # Determine size from any entry in values_dict.
-        if values:
-            size = next(iter(values.values())).shape[0]
-        else:
-            size = 1
+        size = next(iter(values.values())).shape[0] if values else 1
         return np.full(size, node.value, dtype=np.float64)
 
     if isinstance(node, AssetNode):
         if node.name not in values:
             available = ", ".join(sorted(values.keys())) if values else "(none)"
             raise ExpressionError(
-                f"Unknown asset name '{node.name}'. "
-                f"Available: {available}"
+                f"Unknown asset name '{node.name}'. Available: {available}"
             )
         return values[node.name].astype(np.float64)
 
@@ -336,15 +329,19 @@ def evaluate(
         left = evaluate(node.left, values)
         right = evaluate(node.right, values)
         if node.op == "+":
-            return left + right
+            result: np.ndarray = left + right
+            return result
         elif node.op == "-":
-            return left - right
+            result = left - right
+            return result
         elif node.op == "*":
-            return left * right
+            result = left * right
+            return result
         elif node.op == "/":
             if np.any(right == 0.0):
                 raise ExpressionError("Division by zero in expression")
-            return left / right
+            result = left / right
+            return result
         else:
             raise ExpressionError(f"Unknown operator '{node.op}'")
 

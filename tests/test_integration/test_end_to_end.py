@@ -79,12 +79,17 @@ class TestNoReport:
     """The --no-report flag should suppress HTML generation."""
 
     def test_no_report_no_html(self, tmp_path):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--output", str(tmp_path),
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--output",
+                str(tmp_path),
+            ]
+        )
         assert result.exit_code == 0
         # No HTML files should have been created
         html_files = list(tmp_path.glob("*.html"))
@@ -100,21 +105,31 @@ class TestJsonFormat:
     """Tests for ``moneta run --format json``."""
 
     def test_json_exit_0(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
         assert result.exit_code == 0, f"output: {result.output}"
 
     def test_json_valid_output(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
         # The JSON output should be the entire stdout
         parsed = json.loads(result.output)
         assert "scenario" in parsed
@@ -122,12 +137,17 @@ class TestJsonFormat:
         assert "elapsed_ms" in parsed
 
     def test_json_scenario_fields(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
         parsed = json.loads(result.output)
         assert parsed["scenario"]["name"] == "Simple investment model"
         assert parsed["scenario"]["simulations"] == 1000
@@ -142,31 +162,47 @@ class TestSimulationsOverride:
     """Tests for ``moneta run --simulations N``."""
 
     def test_override_simulations_exit_0(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--simulations", "100",
-            "--seed", "42",
-            "--no-report",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--simulations",
+                "100",
+                "--seed",
+                "42",
+                "--no-report",
+            ]
+        )
         assert result.exit_code == 0, f"output: {result.output}"
 
     def test_override_simulations_output(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--simulations", "100",
-            "--seed", "42",
-            "--no-report",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--simulations",
+                "100",
+                "--seed",
+                "42",
+                "--no-report",
+            ]
+        )
         assert "100" in result.output
 
     def test_override_simulations_json(self):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--simulations", "100",
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--simulations",
+                "100",
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
         parsed = json.loads(result.output)
         assert parsed["scenario"]["simulations"] == 100
 
@@ -205,36 +241,58 @@ class TestReproducibility:
     """Running with the same seed should produce identical output."""
 
     def test_seeded_runs_are_identical(self):
-        result1 = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-        ])
-        result2 = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-        ])
+        result1 = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+            ]
+        )
+        result2 = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+            ]
+        )
         assert result1.exit_code == 0
         assert result2.exit_code == 0
         # Compare output excluding the header line which contains timing
-        lines1 = [l for l in result1.output.splitlines() if not l.startswith("───")]
-        lines2 = [l for l in result2.output.splitlines() if not l.startswith("───")]
+        lines1 = [
+            line for line in result1.output.splitlines() if not line.startswith("───")
+        ]
+        lines2 = [
+            line for line in result2.output.splitlines() if not line.startswith("───")
+        ]
         assert lines1 == lines2
 
     def test_seeded_json_identical(self):
-        result1 = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
-        result2 = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--no-report",
-            "--format", "json",
-        ])
+        result1 = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
+        result2 = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--no-report",
+                "--format",
+                "json",
+            ]
+        )
         # Parse JSON and compare values (elapsed_ms may differ slightly)
         parsed1 = json.loads(result1.output)
         parsed2 = json.loads(result2.output)
@@ -277,22 +335,32 @@ class TestReportGeneration:
     """Tests for HTML report output."""
 
     def test_report_generated(self, tmp_path):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--output", str(tmp_path),
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--output",
+                str(tmp_path),
+            ]
+        )
         assert result.exit_code == 0
         html_files = list(tmp_path.glob("*.html"))
         assert len(html_files) == 1
         assert "simple_model" in html_files[0].name
 
     def test_report_is_html(self, tmp_path):
-        result = _invoke_run([
-            "run", SIMPLE_MODEL,
-            "--seed", "42",
-            "--output", str(tmp_path),
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SIMPLE_MODEL,
+                "--seed",
+                "42",
+                "--output",
+                str(tmp_path),
+            ]
+        )
         assert result.exit_code == 0
         html_files = list(tmp_path.glob("*.html"))
         content = html_files[0].read_text()
@@ -327,39 +395,57 @@ class TestSweepMode:
     def test_sweep_output_contains_base_query_results(self):
         """Sweep output should still include the base query results."""
         result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
-        assert "$150K at year 5" in result.output or "probability" in result.output.lower()
+        assert (
+            "$150K at year 5" in result.output or "probability" in result.output.lower()
+        )
 
     def test_sweep_report_generation(self, tmp_path):
         """Sweep mode should generate an HTML report."""
-        result = _invoke_run([
-            "run", SWEEP_MODEL,
-            "--seed", "42",
-            "--output", str(tmp_path),
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SWEEP_MODEL,
+                "--seed",
+                "42",
+                "--output",
+                str(tmp_path),
+            ]
+        )
         assert result.exit_code == 0
         html_files = list(tmp_path.glob("*.html"))
         assert len(html_files) == 1
 
     def test_sweep_report_contains_comparison(self, tmp_path):
         """Sweep HTML report should contain comparison content."""
-        result = _invoke_run([
-            "run", SWEEP_MODEL,
-            "--seed", "42",
-            "--output", str(tmp_path),
-        ])
+        result = _invoke_run(
+            [
+                "run",
+                SWEEP_MODEL,
+                "--seed",
+                "42",
+                "--output",
+                str(tmp_path),
+            ]
+        )
         assert result.exit_code == 0
         html_files = list(tmp_path.glob("*.html"))
         content = html_files[0].read_text()
         assert "Scenario Comparison" in content
 
     def test_sweep_produces_different_results(self):
-        """Conservative and aggressive scenarios should produce different probabilities."""
+        """Conservative and aggressive scenarios should produce
+        different probabilities."""
         result = _invoke_run(["run", SWEEP_MODEL, "--seed", "42", "--no-report"])
         assert result.exit_code == 0
         # The comparison table should show different percentages for different scenarios
         # We verify that the output contains multiple percentage values
         lines = result.output.split("\n")
-        comparison_lines = [l for l in lines if "%" in l and ("conservative" in l or "aggressive" in l or "base" in l)]
+        comparison_lines = [
+            line
+            for line in lines
+            if "%" in line
+            and ("conservative" in line or "aggressive" in line or "base" in line)
+        ]
         assert len(comparison_lines) >= 2, (
             f"Expected at least 2 comparison lines with percentages, "
             f"got {len(comparison_lines)}"

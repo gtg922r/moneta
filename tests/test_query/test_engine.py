@@ -10,9 +10,8 @@ from moneta.parser.models import (
     PercentilesQuery,
     ProbabilityQuery,
 )
-from moneta.query.engine import QueryResult, evaluate_queries
+from moneta.query.engine import evaluate_queries
 from moneta.query.expressions import ExpressionError
-
 
 # ===================================================================
 # Helpers
@@ -115,8 +114,8 @@ class TestProbabilityQuery:
         balances = np.zeros((n_runs, n_steps, 2), dtype=np.float64)
         # portfolio = 150k for all, equity varies
         balances[:, 11, 0] = 150000.0
-        balances[:50, 11, 1] = 100000.0   # total: 250k > 200k
-        balances[50:, 11, 1] = 30000.0    # total: 180k < 200k
+        balances[:50, 11, 1] = 100000.0  # total: 250k > 200k
+        balances[50:, 11, 1] = 30000.0  # total: 180k < 200k
 
         store = _make_result_store(balances, ["portfolio", "equity"])
 
@@ -208,14 +207,10 @@ class TestPercentilesQuery:
         assert 24 in pcts
 
         # Month 12: values 100..199
-        assert pcts[12][50] == pytest.approx(
-            np.percentile(np.arange(100, 200), 50)
-        )
+        assert pcts[12][50] == pytest.approx(np.percentile(np.arange(100, 200), 50))
 
         # Month 24: values 200..299
-        assert pcts[24][50] == pytest.approx(
-            np.percentile(np.arange(200, 300), 50)
-        )
+        assert pcts[24][50] == pytest.approx(np.percentile(np.arange(200, 300), 50))
 
     def test_single_at_value(self):
         """Percentile query with a single 'at' value (not a list)."""

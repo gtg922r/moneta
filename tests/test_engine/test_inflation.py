@@ -7,12 +7,10 @@ inflation tracking, deflation, and extreme parameters.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from moneta.engine.processors.inflation import InflationProcessor
 from moneta.engine.state import SimulationState
 from moneta.parser.models import InflationConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -267,7 +265,9 @@ class TestInflationEdgeCases:
         # Should have converged toward the long-term rate
         # E[x(t)] = mu + (x0 - mu) * exp(-theta*t)
         t = 10.0
-        expected_rate = long_term_rate + (initial_rate - long_term_rate) * np.exp(-theta * t)
+        expected_rate = long_term_rate + (initial_rate - long_term_rate) * np.exp(
+            -theta * t
+        )
         # The Euler-Maruyama discretization introduces error vs the exact
         # continuous solution, so we use a tolerance that accounts for this.
         np.testing.assert_allclose(state.inflation_rate[0], expected_rate, rtol=1e-2)

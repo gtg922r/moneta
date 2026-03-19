@@ -19,7 +19,8 @@ from moneta.parser.models import GrowthConfig
 class GrowthProcessor:
     """Apply Geometric Brownian Motion growth to investment-type assets.
 
-    Uses the exact solution: S(t+dt) = S(t) * exp((mu - sigma^2/2)*dt + sigma*sqrt(dt)*Z)
+    Uses the exact solution:
+      S(t+dt) = S(t) * exp((mu - sigma^2/2)*dt + sigma*sqrt(dt)*Z)
     where Z ~ N(0,1). Vectorized across all runs simultaneously.
 
     Only applies growth to assets that have a resolved GrowthConfig (not PresetRef).

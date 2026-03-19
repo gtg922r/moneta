@@ -18,7 +18,6 @@ from rich.table import Table
 from moneta.parser.models import ScenarioConfig
 from moneta.query.engine import QueryResult
 
-
 # ---------------------------------------------------------------------------
 # Currency formatting
 # ---------------------------------------------------------------------------
@@ -65,17 +64,17 @@ def format_currency(value: float) -> str:
         thousands = abs_val / 1_000
         # If it's a whole number of thousands, show no decimals
         if abs(thousands - round(thousands)) < 0.05:
-            return f"${int(round(thousands))}K"
+            return f"${round(thousands)}K"
         # Otherwise show up to 2 decimal places
         formatted = f"{thousands:.2f}".rstrip("0").rstrip(".")
         return f"${formatted}K"
 
     # Comma-formatted for $1,000-$9,999
     if abs_val >= 1_000:
-        return f"${int(round(abs_val)):,}"
+        return f"${round(abs_val):,}"
 
     # Small values: $1-$999
-    return f"${int(round(abs_val))}"
+    return f"${round(abs_val)}"
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +90,10 @@ def _format_header(
     n_sims = f"{scenario_config.simulations:,}"
     horizon_years = scenario_config.time_horizon // 12
     timing = f"{elapsed_ms:.0f}ms"
-    return f"─── Moneta ── {n_sims} simulations ── {horizon_years} year horizon ── {timing} ───"
+    return (
+        f"─── Moneta ── {n_sims} simulations"
+        f" ── {horizon_years} year horizon ── {timing} ───"
+    )
 
 
 def _format_probability_result(result: QueryResult) -> str:

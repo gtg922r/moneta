@@ -7,12 +7,10 @@ and column isolation.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.state import SimulationState
 from moneta.parser.models import GrowthConfig
-
 
 # ---------------------------------------------------------------------------
 # Helpers

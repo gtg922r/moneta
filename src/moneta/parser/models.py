@@ -22,7 +22,6 @@ from moneta.parser.types import (
     ProbabilityWindow,
 )
 
-
 # ---------------------------------------------------------------------------
 # Scenario configuration
 # ---------------------------------------------------------------------------
@@ -346,11 +345,7 @@ class ScenarioModel(BaseModel):
                     )
 
                 # Validate start < end when both specified
-                if (
-                    cf.start is not None
-                    and cf.end is not None
-                    and cf.start >= cf.end
-                ):
+                if cf.start is not None and cf.end is not None and cf.start >= cf.end:
                     raise ValueError(
                         f"Cash flow '{cf_name}' has 'start' ({cf.start}) "
                         f">= 'end' ({cf.end}) — start must be before end"
@@ -363,13 +358,14 @@ class ScenarioModel(BaseModel):
                 # For now, check simple asset names. Complex expressions
                 # will be validated by the expression parser later.
                 of_value = query.of
-                # Check if it looks like a simple asset name (no operators)
-                if not any(op in of_value for op in ["+", "-", "*", "/", ">", "<"]):
-                    if of_value not in asset_names:
-                        raise ValueError(
-                            f"Query {i} references asset '{of_value}' "
-                            f"but no asset with that name exists. "
-                            f"Available: {', '.join(sorted(asset_names))}"
-                        )
+                # Check if it looks like a simple asset name
+                ops = ["+", "-", "*", "/", ">", "<"]
+                is_simple = not any(op in of_value for op in ops)
+                if is_simple and of_value not in asset_names:
+                    raise ValueError(
+                        f"Query {i} references asset '{of_value}' "
+                        f"but no asset with that name exists. "
+                        f"Available: {', '.join(sorted(asset_names))}"
+                    )
 
         return self

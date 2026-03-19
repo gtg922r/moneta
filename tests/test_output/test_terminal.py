@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from moneta.output.terminal import format_currency, render_results
 from moneta.parser.models import ScenarioConfig
 from moneta.query.engine import QueryResult
-
 
 # ---------------------------------------------------------------------------
 # format_currency tests
@@ -181,7 +178,13 @@ class TestRenderPercentileResults:
                 query_type="percentiles",
                 percentiles={
                     60: {10: 612000, 25: 742000, 50: 921000, 75: 1140000, 90: 1410000},
-                    120: {10: 891000, 25: 1120000, 50: 1480000, 75: 1950000, 90: 2560000},
+                    120: {
+                        10: 891000,
+                        25: 1120000,
+                        50: 1480000,
+                        75: 1950000,
+                        90: 2560000,
+                    },
                 },
             ),
         ]

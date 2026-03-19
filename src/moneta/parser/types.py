@@ -12,7 +12,6 @@ from typing import Annotated, Any
 
 from pydantic import BeforeValidator
 
-
 # ---------------------------------------------------------------------------
 # AnnualRate
 # ---------------------------------------------------------------------------
@@ -30,7 +29,9 @@ def _parse_annual_rate(value: Any) -> float:
         return float(value)
 
     if not isinstance(value, str):
-        raise ValueError(f"AnnualRate expects a string or number, got {type(value).__name__}")
+        raise ValueError(
+            f"AnnualRate expects a string or number, got {type(value).__name__}"
+        )
 
     value = value.strip()
 
@@ -79,7 +80,9 @@ def _parse_duration(value: Any) -> int:
         raise ValueError(f"Duration must be a whole number of months, got {value}")
 
     if not isinstance(value, str):
-        raise ValueError(f"Duration expects a string or int, got {type(value).__name__}")
+        raise ValueError(
+            f"Duration expects a string or int, got {type(value).__name__}"
+        )
 
     value = value.strip()
 
@@ -98,10 +101,7 @@ def _parse_duration(value: Any) -> int:
     amount = float(match.group(1))
     unit = match.group(2).lower()
 
-    if unit.startswith("year"):
-        months = int(amount * 12)
-    else:
-        months = int(amount)
+    months = int(amount * 12) if unit.startswith("year") else int(amount)
 
     if months < 0:
         raise ValueError(f"Duration must be non-negative, got {months} months")
@@ -130,10 +130,13 @@ class ProbabilityWindowValue:
     def __post_init__(self) -> None:
         if not 0.0 <= self.probability <= 1.0:
             raise ValueError(
-                f"Probability must be between 0% and 100%, got {self.probability * 100}%"
+                "Probability must be between 0% and 100%, "
+                f"got {self.probability * 100}%"
             )
         if self.start_month < 0:
-            raise ValueError(f"Start month must be non-negative, got {self.start_month}")
+            raise ValueError(
+                f"Start month must be non-negative, got {self.start_month}"
+            )
         if self.end_month <= self.start_month:
             raise ValueError(
                 f"End month ({self.end_month}) must be greater than "
@@ -213,7 +216,9 @@ def _parse_probability_window(value: Any) -> ProbabilityWindowValue:
     )
 
 
-ProbabilityWindow = Annotated[ProbabilityWindowValue, BeforeValidator(_parse_probability_window)]
+ProbabilityWindow = Annotated[
+    ProbabilityWindowValue, BeforeValidator(_parse_probability_window)
+]
 
 
 # ---------------------------------------------------------------------------
@@ -237,9 +242,7 @@ def _parse_multiplier_range(value: Any) -> tuple[float, float]:
         )
 
     if len(value) != 2:
-        raise ValueError(
-            f"MultiplierRange expects exactly 2 values, got {len(value)}"
-        )
+        raise ValueError(f"MultiplierRange expects exactly 2 values, got {len(value)}")
 
     def _parse_multiplier(v: Any) -> float:
         if isinstance(v, (int, float)):
@@ -253,25 +256,27 @@ def _parse_multiplier_range(value: Any) -> tuple[float, float]:
             # Try plain number
             try:
                 return float(v)
-            except ValueError:
+            except ValueError as err:
                 raise ValueError(
                     f"Cannot parse multiplier from '{v}'. "
                     "Expected format: '<number>x' or a number, e.g. '2x'"
-                )
-        raise ValueError(f"Multiplier expects a string or number, got {type(v).__name__}")
+                ) from err
+        raise ValueError(
+            f"Multiplier expects a string or number, got {type(v).__name__}"
+        )
 
     low = _parse_multiplier(value[0])
     high = _parse_multiplier(value[1])
 
     if low > high:
-        raise ValueError(
-            f"MultiplierRange low ({low}) must not exceed high ({high})"
-        )
+        raise ValueError(f"MultiplierRange low ({low}) must not exceed high ({high})")
 
     return (low, high)
 
 
-MultiplierRange = Annotated[tuple[float, float], BeforeValidator(_parse_multiplier_range)]
+MultiplierRange = Annotated[
+    tuple[float, float], BeforeValidator(_parse_multiplier_range)
+]
 
 
 # ---------------------------------------------------------------------------
@@ -310,11 +315,11 @@ def _parse_currency_amount(value: Any) -> float:
 
     try:
         result = float(value)
-    except ValueError:
+    except ValueError as err:
         raise ValueError(
             f"Cannot parse CurrencyAmount from '{value}'. "
             "Expected format: '$850,000' or a number"
-        )
+        ) from err
 
     return result
 
@@ -396,14 +401,16 @@ def _parse_cash_flow_amount(value: Any) -> CashFlowAmountValue:
 
     try:
         amount = float(s)
-    except ValueError:
+    except ValueError as err:
         raise ValueError(
             f"Cannot parse CashFlowAmount from '{raw}'. "
             "Expected format: '[-]$<amount> [monthly|annually]', "
             "e.g. '$5,000 monthly' or '-$100,000'"
-        )
+        ) from err
 
     return CashFlowAmountValue(amount=sign * amount, frequency=frequency)
 
 
-CashFlowAmount = Annotated[CashFlowAmountValue, BeforeValidator(_parse_cash_flow_amount)]
+CashFlowAmount = Annotated[
+    CashFlowAmountValue, BeforeValidator(_parse_cash_flow_amount)
+]

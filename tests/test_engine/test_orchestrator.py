@@ -7,7 +7,6 @@ seeded reproducibility, and correctness of recorded results.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from moneta.engine.orchestrator import build_pipeline, run_simulation, run_sweep
 from moneta.engine.processors.cash_flow import CashFlowProcessor
@@ -15,7 +14,7 @@ from moneta.engine.processors.events import EventProcessor
 from moneta.engine.processors.growth import GrowthProcessor
 from moneta.engine.processors.inflation import InflationProcessor
 from moneta.engine.processors.transfer import TransferProcessor
-from moneta.engine.state import ResultStore, SimulationState
+from moneta.engine.state import SimulationState
 from moneta.parser.models import (
     CashFlowConfig,
     GlobalConfig,
@@ -33,7 +32,6 @@ from moneta.parser.models import (
     TransferConfig,
 )
 from moneta.parser.types import CashFlowAmountValue, ProbabilityWindowValue
-
 
 # ---------------------------------------------------------------------------
 # Helpers — build test models
@@ -165,8 +163,11 @@ class TestBuildPipeline:
                 "cash": InvestmentAsset(
                     type="investment",
                     initial_balance=100_000,
-                    # Use a GrowthConfig with 0% return and 0% vol — effectively no growth
-                    growth=GrowthConfig(model="gbm", expected_return=0.0, volatility=0.0),
+                    # Use a GrowthConfig with 0% return and 0% vol
+                    # — effectively no growth
+                    growth=GrowthConfig(
+                        model="gbm", expected_return=0.0, volatility=0.0
+                    ),
                 ),
             },
             global_config=GlobalConfig(
@@ -269,7 +270,8 @@ class TestResultValuesPopulated:
         assert np.all(results.balances > 0)
 
     def test_simple_model_first_step_near_initial(self):
-        """First recorded step should be close to initial balance (after 1 month of growth)."""
+        """First recorded step should be close to initial balance
+        (after 1 month of growth)."""
         model = _simple_model(n_sims=1000)
         results = run_simulation(model, seed=42)
 
@@ -376,7 +378,8 @@ class TestEquityModelEvents:
             assert event1_fired.max() < 72
 
     def test_event_fire_rates_reasonable(self):
-        """Event fire rates should be in reasonable range for the given probabilities."""
+        """Event fire rates should be in reasonable range
+        for the given probabilities."""
         model = _equity_model(n_sims=10_000)
         results = run_simulation(model, seed=42)
 
@@ -392,9 +395,7 @@ class TestEquityModelEvents:
         # runs from event 0 not affecting event 1's independent firing).
         # Event 1 fires independently, so some percentage should have fired.
         event1_rate = (results.event_fired_at[:, 1] != -1).mean()
-        assert event1_rate > 0.1, (
-            f"Event 1 fire rate {event1_rate:.3f} too low"
-        )
+        assert event1_rate > 0.1, f"Event 1 fire rate {event1_rate:.3f} too low"
 
     def test_transferred_balance_reflected_in_results(self):
         """When events fire, transfers should be reflected in the balance arrays."""
@@ -402,7 +403,7 @@ class TestEquityModelEvents:
         results = run_simulation(model, seed=42)
 
         equity_col = results.asset_index["startup_equity"]
-        portfolio_col = results.asset_index["investment_portfolio"]
+        results.asset_index["investment_portfolio"]
 
         # For runs where event 0 fired early, the equity balance should eventually
         # be zero (after transfer)
@@ -485,7 +486,8 @@ class TestCumulativeInflation:
         )
 
     def test_cum_inflation_reasonable_at_10_years(self):
-        """After 10 years at ~3% annual inflation, cum_inflation should be roughly 1.03^10 ~ 1.34."""
+        """After 10 years at ~3% annual inflation,
+        cum_inflation should be roughly 1.03^10 ~ 1.34."""
         model = _simple_model(n_sims=10_000, n_months=120)
         results = run_simulation(model, seed=42)
 
@@ -695,7 +697,7 @@ class TestRunSweep:
         model = _sweep_model(n_sims=100)
         results = run_sweep(model, seed=42)
 
-        for label, store, query_results in results:
+        for _label, store, query_results in results:
             assert store.n_runs == 100
             assert store.n_steps == 60
             assert store.n_assets == 1
@@ -762,7 +764,7 @@ class TestRunSweep:
         results1 = run_sweep(model, seed=42)
         results2 = run_sweep(model, seed=42)
 
-        for (l1, s1, _), (l2, s2, _) in zip(results1, results2):
+        for (l1, s1, _), (l2, s2, _) in zip(results1, results2, strict=True):
             assert l1 == l2
             np.testing.assert_array_equal(s1.balances, s2.balances)
 
@@ -783,7 +785,8 @@ class TestRunSweep:
             assert len(qr) == 2
 
     def test_run_sweep_with_equity_and_cash_flows(self):
-        """Sweep re-validation round-trips ProbabilityWindow and CashFlowAmount through dict.
+        """Sweep re-validation round-trips ProbabilityWindow
+        and CashFlowAmount through dict.
 
         Regression test: model_dump() serializes ProbabilityWindowValue and
         CashFlowAmountValue to dicts. The BeforeValidator must accept dicts

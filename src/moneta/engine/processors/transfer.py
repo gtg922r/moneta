@@ -32,9 +32,7 @@ class TransferProcessor:
         self._configs = transfer_configs
 
     @classmethod
-    def from_scenario(
-        cls, model: ScenarioModel, n_runs: int
-    ) -> TransferProcessor:
+    def from_scenario(cls, model: ScenarioModel, n_runs: int) -> TransferProcessor:
         """Build transfer configs from the model's illiquid equity assets."""
         asset_names = list(model.assets.keys())
         asset_index = {name: i for i, name in enumerate(asset_names)}
@@ -74,9 +72,7 @@ class TransferProcessor:
 
         return cls(configs)
 
-    def step(
-        self, state: SimulationState, dt: float, rng: np.random.Generator
-    ) -> None:
+    def step(self, state: SimulationState, dt: float, rng: np.random.Generator) -> None:
         """Execute triggered transfers for the current time step.
 
         For each transfer config:

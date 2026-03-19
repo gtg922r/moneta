@@ -14,7 +14,6 @@ from moneta.parser.types import (
     ProbabilityWindowValue,
 )
 
-
 # ===================================================================
 # Helper models — wrap each type so we can test via Pydantic parsing
 # ===================================================================

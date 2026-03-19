@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from moneta.engine.processors.events import EventProcessor, _EventConfig, _compute_hazard_rate
+from moneta.engine.processors.events import (
+    EventProcessor,
+    _compute_hazard_rate,
+)
 from moneta.engine.state import SimulationState
 from moneta.parser.models import (
     GlobalConfig,
@@ -20,7 +22,6 @@ from moneta.parser.models import (
     TransferConfig,
 )
 from moneta.parser.types import ProbabilityWindowValue
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -54,7 +55,9 @@ def _equity_model(
                 shares=50_000,
                 liquidity_events=[
                     LiquidityEvent(
-                        probability=ProbabilityWindowValue(probability, start_month, end_month),
+                        probability=ProbabilityWindowValue(
+                            probability, start_month, end_month
+                        ),
                         valuation_range=(mult_low, mult_high),
                     ),
                 ],
@@ -255,8 +258,12 @@ class TestEventProcessorStepDeterministic:
     def test_event_fires_at_expected_step_with_known_seed(self):
         """With a known seed and high hazard rate, event should fire quickly."""
         model = _equity_model(
-            probability=0.90, start_month=0, end_month=12,
-            current_valuation=100_000, mult_low=2.0, mult_high=2.0,
+            probability=0.90,
+            start_month=0,
+            end_month=12,
+            current_valuation=100_000,
+            mult_low=2.0,
+            mult_high=2.0,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=1)
@@ -278,8 +285,12 @@ class TestEventProcessorStepDeterministic:
     def test_event_sets_balance_to_liquidation_value(self):
         """When event fires, balance = base_valuation * multiplier."""
         model = _equity_model(
-            probability=1.0, start_month=0, end_month=1,
-            current_valuation=100_000, mult_low=3.0, mult_high=3.0,
+            probability=1.0,
+            start_month=0,
+            end_month=1,
+            current_valuation=100_000,
+            mult_low=3.0,
+            mult_high=3.0,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=10)
@@ -292,15 +303,17 @@ class TestEventProcessorStepDeterministic:
         # All should fire (100% probability, h=1.0)
         assert state.events_fired[:, 0].all()
         # Balance = 100_000 * 3.0 = 300_000
-        np.testing.assert_array_almost_equal(
-            state.balances[:, equity_col], 300_000.0
-        )
+        np.testing.assert_array_almost_equal(state.balances[:, equity_col], 300_000.0)
 
     def test_event_does_not_fire_outside_window(self):
         """Events should not fire before start_month or at/after end_month."""
         model = _equity_model(
-            probability=1.0, start_month=6, end_month=12,
-            current_valuation=100_000, mult_low=2.0, mult_high=2.0,
+            probability=1.0,
+            start_month=6,
+            end_month=12,
+            current_valuation=100_000,
+            mult_low=2.0,
+            mult_high=2.0,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=10)
@@ -321,13 +334,17 @@ class TestEventProcessorStepDeterministic:
     def test_event_does_not_fire_at_end_month(self):
         """end_month is exclusive — event should not fire at step=end_month."""
         model = _equity_model(
-            probability=1.0, start_month=0, end_month=3,
-            current_valuation=100_000, mult_low=2.0, mult_high=2.0,
+            probability=1.0,
+            start_month=0,
+            end_month=3,
+            current_valuation=100_000,
+            mult_low=2.0,
+            mult_high=2.0,
         )
-        proc = EventProcessor.from_scenario(model)
+        EventProcessor.from_scenario(model)
         # Use a small number of runs so we can be sure
-        state = SimulationState.from_scenario(model, n_runs=5)
-        rng = np.random.default_rng(42)
+        SimulationState.from_scenario(model, n_runs=5)
+        np.random.default_rng(42)
 
         # Manually mark all as already fired, then reset
         # Test at step=end_month (3) which should be outside window
@@ -341,8 +358,12 @@ class TestEventProcessorStepDeterministic:
     def test_event_fires_at_most_once_per_run(self):
         """Once an event fires, it should not fire again in subsequent steps."""
         model = _equity_model(
-            probability=0.99, start_month=0, end_month=120,
-            current_valuation=100_000, mult_low=2.0, mult_high=2.0,
+            probability=0.99,
+            start_month=0,
+            end_month=120,
+            current_valuation=100_000,
+            mult_low=2.0,
+            mult_high=2.0,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=100)
@@ -381,8 +402,11 @@ class TestEventProcessorStepStatistical:
         """100K runs, 20% within 3 years → ~20% fire rate."""
         n_runs = 100_000
         model = _equity_model(
-            probability=0.20, start_month=0, end_month=36,
-            n_months=36, n_sims=n_runs,
+            probability=0.20,
+            start_month=0,
+            end_month=36,
+            n_months=36,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -402,8 +426,11 @@ class TestEventProcessorStepStatistical:
         """100K runs, 60% within months 60-72 → ~60% fire rate."""
         n_runs = 100_000
         model = _equity_model(
-            probability=0.60, start_month=60, end_month=72,
-            n_months=72, n_sims=n_runs,
+            probability=0.60,
+            start_month=60,
+            end_month=72,
+            n_months=72,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -423,8 +450,11 @@ class TestEventProcessorStepStatistical:
         """100% probability within 12 months → fires in every run."""
         n_runs = 10_000
         model = _equity_model(
-            probability=1.0, start_month=0, end_month=12,
-            n_months=12, n_sims=n_runs,
+            probability=1.0,
+            start_month=0,
+            end_month=12,
+            n_months=12,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -440,8 +470,11 @@ class TestEventProcessorStepStatistical:
         """~0% probability → fires in essentially no runs."""
         n_runs = 10_000
         model = _equity_model(
-            probability=0.001, start_month=0, end_month=12,
-            n_months=12, n_sims=n_runs,
+            probability=0.001,
+            start_month=0,
+            end_month=12,
+            n_months=12,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -461,9 +494,14 @@ class TestEventProcessorStepStatistical:
         """Liquidation values should be within [base*low, base*high]."""
         n_runs = 10_000
         model = _equity_model(
-            probability=1.0, start_month=0, end_month=1,
-            current_valuation=100_000, mult_low=2.0, mult_high=5.0,
-            n_months=1, n_sims=n_runs,
+            probability=1.0,
+            start_month=0,
+            end_month=1,
+            current_valuation=100_000,
+            mult_low=2.0,
+            mult_high=5.0,
+            n_months=1,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -489,9 +527,14 @@ class TestEventProcessorStepStatistical:
         """When mult_low == mult_high, all liquidation values are exact."""
         n_runs = 1000
         model = _equity_model(
-            probability=1.0, start_month=0, end_month=1,
-            current_valuation=100_000, mult_low=3.0, mult_high=3.0,
-            n_months=1, n_sims=n_runs,
+            probability=1.0,
+            start_month=0,
+            end_month=1,
+            current_valuation=100_000,
+            mult_low=3.0,
+            mult_high=3.0,
+            n_months=1,
+            n_sims=n_runs,
         )
         proc = EventProcessor.from_scenario(model)
         state = SimulationState.from_scenario(model, n_runs=n_runs)
@@ -501,9 +544,7 @@ class TestEventProcessorStepStatistical:
         proc.step(state, dt=1 / 12, rng=rng)
 
         equity_col = state.asset_index["startup_equity"]
-        np.testing.assert_array_almost_equal(
-            state.balances[:, equity_col], 300_000.0
-        )
+        np.testing.assert_array_almost_equal(state.balances[:, equity_col], 300_000.0)
 
 
 # ---------------------------------------------------------------------------
@@ -540,8 +581,8 @@ class TestEventProcessorMultipleEvents:
         assert event1_fired.any(), "Event 1 should have fired in some runs"
 
         # They are independent — some runs may have both, some neither
-        both_fired = event0_fired & event1_fired
-        neither_fired = ~event0_fired & ~event1_fired
+        event0_fired & event1_fired
+        ~event0_fired & ~event1_fired
         # With 20% and 60% rates, there should be runs in each category
         # (this is probabilistic but extremely likely with 1000 runs)
 

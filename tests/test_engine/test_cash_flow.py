@@ -13,7 +13,6 @@ import pytest
 from moneta.engine.processors.cash_flow import CashFlowProcessor, _CashFlowConfig
 from moneta.engine.state import SimulationState
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -67,17 +66,19 @@ class TestRecurringWithdrawal:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-1000.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-1000.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -91,17 +92,19 @@ class TestRecurringWithdrawal:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=1000.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=1000.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -123,17 +126,19 @@ class TestOneTimeExpense:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-50_000.0,
-                start_month=5,
-                end_month=6,
-                is_one_time=True,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-50_000.0,
+                    start_month=5,
+                    end_month=6,
+                    is_one_time=True,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -147,17 +152,19 @@ class TestOneTimeExpense:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-10_000.0,
-                start_month=3,
-                end_month=4,
-                is_one_time=True,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-10_000.0,
+                    start_month=3,
+                    end_month=4,
+                    is_one_time=True,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         # Step through 10 steps -- expense only at step 3
         for t in range(10):
@@ -184,17 +191,19 @@ class TestInflationAdjusted:
             cum_inflation=1.10,
         )
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-1000.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=True,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-1000.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=True,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         state.step = 0
         processor.step(state, dt=1 / 12, rng=seeded_rng)
@@ -212,17 +221,19 @@ class TestInflationAdjusted:
             cum_inflation=2.0,
         )
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-1000.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-1000.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         state.step = 0
         processor.step(state, dt=1 / 12, rng=seeded_rng)
@@ -244,17 +255,19 @@ class TestBalanceFloor:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-200_000.0,
-                start_month=0,
-                end_month=1,
-                is_one_time=True,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-200_000.0,
+                    start_month=0,
+                    end_month=1,
+                    is_one_time=True,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         state.step = 0
         processor.step(state, dt=1 / 12, rng=seeded_rng)
@@ -267,17 +280,19 @@ class TestBalanceFloor:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-200_000.0,
-                start_month=0,
-                end_month=1,
-                is_one_time=True,
-                adjust_for_inflation=False,
-                allow_negative=True,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-200_000.0,
+                    start_month=0,
+                    end_month=1,
+                    is_one_time=True,
+                    adjust_for_inflation=False,
+                    allow_negative=True,
+                )
+            ]
+        )
 
         state.step = 0
         processor.step(state, dt=1 / 12, rng=seeded_rng)
@@ -290,17 +305,19 @@ class TestBalanceFloor:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=5_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-3_000.0,
-                start_month=0,
-                end_month=5,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-3_000.0,
+                    start_month=0,
+                    end_month=5,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         # Step 0: 5000 - 3000 = 2000 (no shortfall)
         state.step = 0
@@ -340,17 +357,19 @@ class TestTimingWindow:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-5_000.0,
-                start_month=6,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-5_000.0,
+                    start_month=6,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         # Steps 0-5 should not apply
         for t in range(6):
@@ -364,17 +383,19 @@ class TestTimingWindow:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-5_000.0,
-                start_month=0,
-                end_month=3,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-5_000.0,
+                    start_month=0,
+                    end_month=3,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(6):
             state.step = t
@@ -389,17 +410,19 @@ class TestTimingWindow:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-2_000.0,
-                start_month=3,
-                end_month=7,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-2_000.0,
+                    start_month=3,
+                    end_month=7,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -423,17 +446,19 @@ class TestAnnualFrequency:
         n_runs = 100
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-1_000.0,  # 12000 / 12
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            )
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-1_000.0,  # 12000 / 12
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                )
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -456,26 +481,28 @@ class TestMultipleCashFlows:
         n_runs = 50
         state = _make_state(n_runs=n_runs, initial_balance=100_000.0)
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-1_000.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            ),
-            _CashFlowConfig(
-                asset_col=0,
-                monthly_amount=-500.0,
-                start_month=0,
-                end_month=12,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            ),
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-1_000.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                ),
+                _CashFlowConfig(
+                    asset_col=0,
+                    monthly_amount=-500.0,
+                    start_month=0,
+                    end_month=12,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                ),
+            ]
+        )
 
         for t in range(12):
             state.step = t
@@ -493,26 +520,28 @@ class TestMultipleCashFlows:
             initial_balances={"savings": 50_000.0, "brokerage": 100_000.0},
         )
 
-        processor = CashFlowProcessor([
-            _CashFlowConfig(
-                asset_col=0,  # savings
-                monthly_amount=-500.0,
-                start_month=0,
-                end_month=6,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            ),
-            _CashFlowConfig(
-                asset_col=1,  # brokerage
-                monthly_amount=1_000.0,
-                start_month=0,
-                end_month=6,
-                is_one_time=False,
-                adjust_for_inflation=False,
-                allow_negative=False,
-            ),
-        ])
+        processor = CashFlowProcessor(
+            [
+                _CashFlowConfig(
+                    asset_col=0,  # savings
+                    monthly_amount=-500.0,
+                    start_month=0,
+                    end_month=6,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                ),
+                _CashFlowConfig(
+                    asset_col=1,  # brokerage
+                    monthly_amount=1_000.0,
+                    start_month=0,
+                    end_month=6,
+                    is_one_time=False,
+                    adjust_for_inflation=False,
+                    allow_negative=False,
+                ),
+            ]
+        )
 
         for t in range(6):
             state.step = t
@@ -774,9 +803,7 @@ class TestFromScenario:
         )
 
         model = ScenarioModel(
-            scenario=ScenarioConfig(
-                name="no_cf", time_horizon=60, simulations=10
-            ),
+            scenario=ScenarioConfig(name="no_cf", time_horizon=60, simulations=10),
             assets={
                 "portfolio": InvestmentAsset(
                     type="investment",

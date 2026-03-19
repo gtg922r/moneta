@@ -8,14 +8,12 @@ from __future__ import annotations
 
 import copy
 from pathlib import Path
-from typing import Any
 
 import yaml
 
 from moneta import MonetaError
 from moneta.parser.models import ScenarioModel
 from moneta.presets import get_preset
-
 
 # ---------------------------------------------------------------------------
 # Public API
@@ -62,7 +60,7 @@ def load_model_from_string(yaml_string: str) -> ScenarioModel:
 # ---------------------------------------------------------------------------
 
 
-def _load_yaml(path: Path) -> dict:
+def _load_yaml(path: Path) -> dict[str, object]:
     """Load and parse a YAML file, returning the raw dict.
 
     Raises MonetaError for file-not-found or malformed YAML.
@@ -89,7 +87,7 @@ def _load_yaml(path: Path) -> dict:
     return data
 
 
-def _resolve_presets(raw_dict: dict) -> dict:
+def _resolve_presets(raw_dict: dict[str, object]) -> dict[str, object]:
     """Walk the raw dict and resolve any preset references.
 
     Looks for ``preset: name`` in growth sections (under assets) and
@@ -101,7 +99,7 @@ def _resolve_presets(raw_dict: dict) -> dict:
     # Resolve asset growth presets
     assets = result.get("assets")
     if isinstance(assets, dict):
-        for asset_name, asset_data in assets.items():
+        for _asset_name, asset_data in assets.items():
             if not isinstance(asset_data, dict):
                 continue
             growth = asset_data.get("growth")
@@ -113,14 +111,20 @@ def _resolve_presets(raw_dict: dict) -> dict:
     global_cfg = result.get("global")
     if isinstance(global_cfg, dict):
         inflation = global_cfg.get("inflation")
-        if isinstance(inflation, dict) and "preset" in inflation and len(inflation) == 1:
+        if (
+            isinstance(inflation, dict)
+            and "preset" in inflation
+            and len(inflation) == 1
+        ):
             preset_name = inflation["preset"]
             global_cfg["inflation"] = get_preset(preset_name)
 
     return result
 
 
-def deep_merge(base: dict, overrides: dict) -> dict:
+def deep_merge(
+    base: dict[str, object], overrides: dict[str, object]
+) -> dict[str, object]:
     """Recursively merge *overrides* into *base*, returning a new dict.
 
     - Dict values are recursively merged.
@@ -129,12 +133,9 @@ def deep_merge(base: dict, overrides: dict) -> dict:
     """
     merged = copy.deepcopy(base)
     for key, override_val in overrides.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(override_val, dict)
-        ):
-            merged[key] = deep_merge(merged[key], override_val)
+        existing = merged.get(key)
+        if isinstance(existing, dict) and isinstance(override_val, dict):
+            merged[key] = deep_merge(existing, override_val)
         else:
             merged[key] = copy.deepcopy(override_val)
     return merged

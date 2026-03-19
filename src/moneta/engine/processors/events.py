@@ -50,7 +50,7 @@ def _compute_hazard_rate(probability: float, window_months: int) -> float:
     if probability >= 1.0:
         # Can't have h=1.0 exactly (would fire instantly), use very high rate
         return 1.0
-    return 1.0 - (1.0 - probability) ** (1.0 / window_months)
+    return float(1.0 - (1.0 - probability) ** (1.0 / window_months))
 
 
 class EventProcessor:
@@ -70,7 +70,7 @@ class EventProcessor:
 
         for name, asset in model.assets.items():
             if isinstance(asset, IlliquidEquityAsset):
-                for j, liquidity_event in enumerate(asset.liquidity_events):
+                for _j, liquidity_event in enumerate(asset.liquidity_events):
                     prob_window = liquidity_event.probability
                     window_months = prob_window.end_month - prob_window.start_month
                     hazard_rate = _compute_hazard_rate(
@@ -96,9 +96,7 @@ class EventProcessor:
 
         return cls(configs)
 
-    def step(
-        self, state: SimulationState, dt: float, rng: np.random.Generator
-    ) -> None:
+    def step(self, state: SimulationState, dt: float, rng: np.random.Generator) -> None:
         """Check and fire events for the current time step.
 
         For each event config within its active window:

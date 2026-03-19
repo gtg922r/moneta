@@ -16,8 +16,8 @@ from moneta.engine.orchestrator import run_simulation, run_sweep
 from moneta.output.report import generate_report
 from moneta.output.terminal import render_results
 from moneta.parser.loader import load_model
-from moneta.query.engine import evaluate_queries
-
+from moneta.parser.models import ScenarioConfig
+from moneta.query.engine import QueryResult, evaluate_queries
 
 # ---------------------------------------------------------------------------
 # CLI group
@@ -25,7 +25,7 @@ from moneta.query.engine import evaluate_queries
 
 
 @click.group()
-def main():
+def main() -> None:
     """Moneta — Probabilistic financial modeling engine."""
 
 
@@ -100,11 +100,7 @@ def run(
             )
         if seed is not None:
             model = model.model_copy(
-                update={
-                    "scenario": model.scenario.model_copy(
-                        update={"seed": seed}
-                    )
-                }
+                update={"scenario": model.scenario.model_copy(update={"seed": seed})}
             )
 
         # 3. Run simulation with timing
@@ -129,14 +125,14 @@ def run(
         # 5. Output based on format
         if output_format == "table":
             output_text = render_results(
-                query_results, model.scenario, elapsed_ms,
+                query_results,
+                model.scenario,
+                elapsed_ms,
                 sweep_results=sweep_comparison,
             )
             click.echo(output_text)
         elif output_format == "json":
-            json_output = _results_to_json(
-                query_results, model.scenario, elapsed_ms
-            )
+            json_output = _results_to_json(query_results, model.scenario, elapsed_ms)
             click.echo(json.dumps(json_output, indent=2))
         elif output_format == "csv":
             csv_output = _results_to_csv(query_results, model.scenario, elapsed_ms)
@@ -149,21 +145,24 @@ def run(
             report_name = Path(model_file).stem + "_report.html"
             report_path = output_dir / report_name
             generate_report(
-                results, query_results, model.scenario, report_path,
+                results,
+                query_results,
+                model.scenario,
+                report_path,
                 sweep_results=sweep_results,
             )
             click.echo(f"\n{_REPORT_ICON} Full report: {report_path}")
 
     except MonetaError as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except Exception as e:
         if verbose:
             import traceback
 
             traceback.print_exc()
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 # ---------------------------------------------------------------------------
@@ -186,10 +185,10 @@ def validate(model_file: str) -> None:
         )
     except MonetaError as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 # ---------------------------------------------------------------------------
@@ -202,10 +201,10 @@ _CHECK_ICON = "\u2713"  # check mark
 
 
 def _results_to_json(
-    query_results: list,
-    scenario_config,
+    query_results: list[QueryResult],
+    scenario_config: ScenarioConfig,
     elapsed_ms: float,
-) -> dict:
+) -> dict[str, object]:
     """Convert query results to a JSON-serializable dict."""
     return {
         "scenario": {
@@ -218,9 +217,9 @@ def _results_to_json(
     }
 
 
-def _query_result_to_dict(qr) -> dict:
+def _query_result_to_dict(qr: QueryResult) -> dict[str, object]:
     """Convert a single QueryResult to a JSON-serializable dict."""
-    d: dict = {
+    d: dict[str, object] = {
         "label": qr.label,
         "type": qr.query_type,
     }
@@ -230,9 +229,7 @@ def _query_result_to_dict(qr) -> dict:
         if qr.percentiles is not None:
             # Convert int keys to strings for JSON compatibility
             d["percentiles"] = {
-                str(time_months): {
-                    str(p): v for p, v in pct_data.items()
-                }
+                str(time_months): {str(p): v for p, v in pct_data.items()}
                 for time_months, pct_data in qr.percentiles.items()
             }
     elif qr.query_type == "expected":
@@ -248,8 +245,8 @@ def _query_result_to_dict(qr) -> dict:
 
 
 def _results_to_csv(
-    query_results: list,
-    scenario_config,
+    query_results: list[QueryResult],
+    scenario_config: ScenarioConfig,
     elapsed_ms: float,
 ) -> str:
     """Convert query results to CSV format."""
@@ -260,9 +257,7 @@ def _results_to_csv(
         elif qr.query_type == "percentiles" and qr.percentiles:
             for time_months, pct_data in sorted(qr.percentiles.items()):
                 for p, v in sorted(pct_data.items()):
-                    lines.append(
-                        f"{qr.label},percentile,{time_months}m,p{p},{v:.2f}"
-                    )
+                    lines.append(f"{qr.label},percentile,{time_months}m,p{p},{v:.2f}")
         elif qr.query_type == "expected":
             lines.append(
                 f"{qr.label},expected,mean={qr.mean:.2f},"

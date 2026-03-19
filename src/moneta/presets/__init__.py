@@ -40,12 +40,11 @@ def get_preset(name: str) -> dict[str, Any]:
 
     try:
         content = preset_file.read_text(encoding="utf-8")
-    except (FileNotFoundError, OSError):
+    except (FileNotFoundError, OSError) as err:
         available = list_presets()
         raise MonetaError(
-            f"Unknown preset '{name}'. "
-            f"Available presets: {', '.join(available)}"
-        )
+            f"Unknown preset '{name}'. Available presets: {', '.join(available)}"
+        ) from err
 
     data = yaml.safe_load(content)
     if not isinstance(data, dict):

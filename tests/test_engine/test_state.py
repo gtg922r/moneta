@@ -1,7 +1,6 @@
 """Tests for SimulationState and ResultStore."""
 
 import numpy as np
-import pytest
 
 from moneta.engine.state import ResultStore, SimulationState
 from moneta.parser.models import (
@@ -11,14 +10,13 @@ from moneta.parser.models import (
     InflationConfig,
     InvestmentAsset,
     LiquidityEvent,
-    ProbabilityQuery,
     PresetRef,
+    ProbabilityQuery,
     ScenarioConfig,
     ScenarioModel,
     TransferConfig,
 )
 from moneta.parser.types import ProbabilityWindowValue
-
 
 # ---------------------------------------------------------------------------
 # Helpers — build test models
@@ -55,7 +53,9 @@ def _simple_model(n_months: int = 120, n_sims: int = 100) -> ScenarioModel:
 def _equity_model(n_months: int = 120, n_sims: int = 100) -> ScenarioModel:
     """Investment + illiquid equity with two liquidity events."""
     return ScenarioModel(
-        scenario=ScenarioConfig(name="equity_test", time_horizon=n_months, simulations=n_sims),
+        scenario=ScenarioConfig(
+            name="equity_test", time_horizon=n_months, simulations=n_sims
+        ),
         assets={
             "portfolio": InvestmentAsset(
                 type="investment",

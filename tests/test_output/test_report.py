@@ -16,7 +16,6 @@ from moneta.output.report import (
 from moneta.parser.models import ScenarioConfig
 from moneta.query.engine import QueryResult
 
-
 # ===================================================================
 # Helpers
 # ===================================================================
@@ -35,12 +34,8 @@ def _make_result_store(
     if asset_names is None:
         asset_names = [f"asset_{i}" for i in range(n_assets)]
 
-    balances = rng.lognormal(
-        mean=12, sigma=0.5, size=(n_runs, n_steps, n_assets)
-    )
-    cum_inflation = np.ones((n_runs, n_steps)) * np.linspace(
-        1.0, 1.03, n_steps
-    )
+    balances = rng.lognormal(mean=12, sigma=0.5, size=(n_runs, n_steps, n_assets))
+    cum_inflation = np.ones((n_runs, n_steps)) * np.linspace(1.0, 1.03, n_steps)
     event_fired_at = np.full((n_runs, 0), -1, dtype=np.int32)
     asset_index = {name: i for i, name in enumerate(asset_names)}
 
@@ -255,7 +250,7 @@ class TestCreateProbabilityTimeline:
         n_runs, n_steps = 100, 12
         balances = np.zeros((n_runs, n_steps, 1), dtype=np.float64)
         balances[:50, :, 0] = 100000.0  # above threshold
-        balances[50:, :, 0] = 10000.0   # below threshold
+        balances[50:, :, 0] = 10000.0  # below threshold
 
         store = ResultStore(
             balances=balances,
@@ -450,16 +445,20 @@ class TestSweepReport:
         config = _make_scenario_config()
         output = tmp_path / "sweep_report.html"
 
-        qr_base = [QueryResult(
-            label="Test probability",
-            query_type="probability",
-            probability=50.0,
-        )]
-        qr_alt = [QueryResult(
-            label="Test probability",
-            query_type="probability",
-            probability=65.0,
-        )]
+        qr_base = [
+            QueryResult(
+                label="Test probability",
+                query_type="probability",
+                probability=50.0,
+            )
+        ]
+        qr_alt = [
+            QueryResult(
+                label="Test probability",
+                query_type="probability",
+                probability=65.0,
+            )
+        ]
 
         sweep = [
             ("base", store_base, qr_base),
@@ -521,7 +520,7 @@ class TestDeterminism:
 
         # Strip standard UUIDs
         html = re.sub(
-            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
             "UUID-PLACEHOLDER",
             html,
         )

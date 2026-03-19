@@ -13,7 +13,6 @@ import numpy as np
 
 from moneta.parser.models import (
     IlliquidEquityAsset,
-    InflationConfig,
     InvestmentAsset,
     PresetRef,
     ScenarioModel,
