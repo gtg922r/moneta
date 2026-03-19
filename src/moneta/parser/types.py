@@ -150,6 +150,14 @@ def _parse_probability_window(value: Any) -> ProbabilityWindowValue:
     if isinstance(value, ProbabilityWindowValue):
         return value
 
+    # Handle dict from model_dump() during sweep re-validation
+    if isinstance(value, dict):
+        return ProbabilityWindowValue(
+            probability=value["probability"],
+            start_month=value["start_month"],
+            end_month=value["end_month"],
+        )
+
     if not isinstance(value, str):
         raise ValueError(
             f"ProbabilityWindow expects a string, got {type(value).__name__}"
@@ -343,6 +351,13 @@ def _parse_cash_flow_amount(value: Any) -> CashFlowAmountValue:
     """
     if isinstance(value, CashFlowAmountValue):
         return value
+
+    # Handle dict from model_dump() during sweep re-validation
+    if isinstance(value, dict):
+        return CashFlowAmountValue(
+            amount=value["amount"],
+            frequency=value.get("frequency"),
+        )
 
     if isinstance(value, (int, float)):
         return CashFlowAmountValue(amount=float(value), frequency=None)

@@ -782,6 +782,96 @@ class TestRunSweep:
             assert not np.any(np.isnan(store.balances))
             assert len(qr) == 2
 
+    def test_run_sweep_with_equity_and_cash_flows(self):
+        """Sweep re-validation round-trips ProbabilityWindow and CashFlowAmount through dict.
+
+        Regression test: model_dump() serializes ProbabilityWindowValue and
+        CashFlowAmountValue to dicts. The BeforeValidator must accept dicts
+        on re-parse during sweep, not just strings and native types.
+        """
+        from moneta.parser.loader import load_model_from_string
+
+        yaml_str = """
+scenario:
+  name: "Sweep with equity + cash flows"
+  time_horizon: 10 years
+  simulations: 100
+
+assets:
+  portfolio:
+    type: investment
+    initial_balance: $500,000
+    growth:
+      model: gbm
+      expected_return: 7% annually
+      volatility: 15% annually
+  equity:
+    type: illiquid_equity
+    current_valuation: $200,000
+    liquidity_events:
+      - probability: 30% within 3 years
+        valuation_range: [2x, 5x]
+    on_liquidation:
+      transfer_to: portfolio
+
+global:
+  inflation:
+    model: mean_reverting
+    long_term_rate: 3% annually
+    volatility: 1% annually
+
+cash_flows:
+  spending:
+    amount: -$3,000 monthly
+    asset: portfolio
+    adjust_for: inflation
+
+queries:
+  - type: probability
+    expression: portfolio > 500000
+    at: 10 years
+    label: "Above $500K"
+
+sweep:
+  scenarios:
+    - label: low_exit
+      overrides:
+        assets:
+          equity:
+            type: illiquid_equity
+            current_valuation: 200000
+            liquidity_events:
+              - probability: 30% within 3 years
+                valuation_range: [1x, 2x]
+            on_liquidation:
+              transfer_to: portfolio
+    - label: high_exit
+      overrides:
+        assets:
+          equity:
+            type: illiquid_equity
+            current_valuation: 200000
+            liquidity_events:
+              - probability: 30% within 3 years
+                valuation_range: [5x, 10x]
+            on_liquidation:
+              transfer_to: portfolio
+"""
+        model = load_model_from_string(yaml_str)
+        results = run_sweep(model, seed=42)
+
+        assert len(results) == 2
+        assert results[0][0] == "low_exit"
+        assert results[1][0] == "high_exit"
+
+        # high_exit should have higher median portfolio value
+        low_median = float(np.median(results[0][1].balances[:, -1, 0]))
+        high_median = float(np.median(results[1][1].balances[:, -1, 0]))
+        assert high_median > low_median, (
+            f"high_exit median ({high_median:.0f}) should exceed "
+            f"low_exit median ({low_median:.0f})"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Cash flow pipeline integration tests
