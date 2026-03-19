@@ -49,6 +49,19 @@ Type checking runs in CI only (too slow for pre-commit hooks). Run it manually b
 uv run mypy src/
 ```
 
+## Releasing
+
+To release a new version:
+
+1. Ensure CI is green on main
+2. Update `CHANGELOG.md` with the new version's changes
+3. Bump `version` in `pyproject.toml` (single source of truth)
+4. Commit: `git commit -m "release: vX.Y.Z"`
+5. Tag: `git tag vX.Y.Z`
+6. Push: `git push origin main --tags`
+
+The `release.yml` workflow handles the rest: lint + typecheck + test → build → GitHub Release with artifacts. The tag version must match `pyproject.toml` version or the release will fail.
+
 ## gstack
 
 Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
